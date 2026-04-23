@@ -19,12 +19,20 @@ cd "$(dirname "$0")"
 LIBRARY=$( rdr get )
 CARRELS=$( rdr catalog )
 
+tabs 18
+
 # process each carrel
 for CARREL in ${CARRELS[@]}; do
 
-	echo $CARREL
-	echo "$SEARCH $CARREL $QUERY $DEPTH"
-	$SEARCH $CARREL $QUERY $DEPTH
+	printf "$CARREL\t"
+	#echo "$SEARCH $CARREL $QUERY $DEPTH"
+	RESULT=$( $SEARCH $CARREL $QUERY $DEPTH )
+	if [[ ${#RESULT} > 1 ]]; then
+		printf 'WORKS' >&2; 
+	else
+		printf 'BROKEN' >&2; 
+	fi
+	
 	echo
 	
 # fini
