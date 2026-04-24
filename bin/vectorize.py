@@ -80,38 +80,28 @@ for index, file in enumerate( cache.glob( PATTERN ) ):
 	# vectorize the sentences; cpu-intensive
 	try :
 	
+		# do the work
 		embeddings = embed( model=MODEL, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
 	
+		# process each sentence/embeddding combination
+		item = 0
+		for sentence, embedding in zip( sentences, embeddings ) :
+			
+			# do the inserts
+			item += 1
+			database.execute( INSERT, [ title, item, sentence, serialize( embedding ) ] )	
+
 	except ResponseError as e:
 
-		print(f"Error: {e.error}")
-		print(f"Status Code: {e.status_code}")
-		
-		# Handle specific error types
-		#if e.status_code == 404:
-		#    print("Model not found. Try: ollama pull llama3.2")
-		#elif e.status_code == 400:
-		#    print("Bad request:", e.error)
-		#elif e.status_code == 500:
-		#    print("Server error:", e.error)
-		#else:
-		#    print(f"Unexpected error {e.status_code}: {e.error}")
+		stderr.write(f"Status Code: {e.status_code}; Error: {e.error}; Call Eric?\n")
 		continue
-		
-	# process each sentence/embeddding combination
-	item = 0
-	for sentence, embedding in zip( sentences, embeddings ) :
-		
-		# do the inserts
-		item += 1
-		database.execute( INSERT, [ title, item, sentence, serialize( embedding ) ] )	
 	
 # commit and close
 database.commit()
 database.close()
 
 # cache vectors to the carrel as a file; the etc directory is becoming bloated
-with open( configuration( LIBRARY )/carrel/ETC/VECTORS, 'wb' ) as handle : dump( array( embeddings ), handle )
+#with open( configuration( LIBRARY )/carrel/ETC/VECTORS, 'wb' ) as handle : dump( array( embeddings ), handle )
 
 # done
 exit()

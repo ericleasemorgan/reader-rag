@@ -1,1 +1,16 @@
-chapter-026	51
+search-beauty_etexts-reader--aeu_ark+=13960=t8v98zm30	111
+search-beauty_etexts-reader--coo1_ark+=13960=t6252613x	5020
+search-beauty_etexts-reader--coo1_ark+=13960=t6252613x	5162
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1132
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1187
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1197
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1209
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1270
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1311
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1326
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1345
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1517
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1563
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	1568
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	3591
+search-beauty_etexts-reader--gri_ark+=13960=t5m954h04	3785
