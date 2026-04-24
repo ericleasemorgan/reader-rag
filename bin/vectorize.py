@@ -31,7 +31,7 @@ VECTORS  = 'vectors.pkl'
 
 # require
 from numpy      import array
-from ollama     import embed
+from ollama     import embed, ResponseError
 from pandas     import read_csv
 from pathlib    import Path
 from pickle     import dump
@@ -78,8 +78,26 @@ for index, file in enumerate( cache.glob( PATTERN ) ):
 	sentences = [ str( sentence ) for sentence in sentences ]
 	
 	# vectorize the sentences; cpu-intensive
-	embeddings = embed( model=MODEL, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
+	try :
 	
+		embeddings = embed( model=MODEL, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
+	
+	except ResponseError as e:
+
+		print(f"Error: {e.error}")
+		print(f"Status Code: {e.status_code}")
+		
+		# Handle specific error types
+		#if e.status_code == 404:
+		#    print("Model not found. Try: ollama pull llama3.2")
+		#elif e.status_code == 400:
+		#    print("Bad request:", e.error)
+		#elif e.status_code == 500:
+		#    print("Server error:", e.error)
+		#else:
+		#    print(f"Unexpected error {e.status_code}: {e.error}")
+		continue
+		
 	# process each sentence/embeddding combination
 	item = 0
 	for sentence, embedding in zip( sentences, embeddings ) :
