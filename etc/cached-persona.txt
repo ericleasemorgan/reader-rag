@@ -1,0 +1,5 @@
+<<<<<<< HEAD
+a university professor
+=======
+a college senior
+>>>>>>> 02dbc4a (keep more up to date)

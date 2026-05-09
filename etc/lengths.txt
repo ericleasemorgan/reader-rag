@@ -1,0 +1,13 @@
+a single word
+two words
+four words
+a single sentence
+two sentences
+four sentences
+one paragraph
+two paragraphs
+four paragraphs
+a blues
+a haiku
+two versus of haiku
+four versus of haiku
