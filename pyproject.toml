@@ -1,0 +1,22 @@
+[project]
+name = "rrag"
+version = "0.0.1"
+description = "A retieval-augmented generation (RAG) system applied against Distant Reader study carrels"
+dependencies = [
+	"numpy",
+	"ollama",
+	"pandas",
+	"pathlib",
+	"scikit-learn",
+	"scipy",
+	"sqlite_vec",
+	"typing",
+    "click"
+]
+
+[build-system]
+requires = ["flit_core"]
+build-backend = "flit_core.buildapi"
+
+[project.scripts]
+rrag = "rrag.rrag:rrag"
