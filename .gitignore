@@ -8,3 +8,5 @@ x-*
 ./etc/cached-query.txt
 ./etc/cached-results.txt
 ./etc/context.txt
+__pycache__
+rrag/cache/cached-results.csv
