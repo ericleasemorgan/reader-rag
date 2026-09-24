@@ -1,4 +1,5 @@
 titles,idx,sentences,distances
+<<<<<<< HEAD
 email-2006-0231,id15,"Eric Lease Morgan Head, Digital Access and Information Architecture Department University Libraries of Notre Dame",0.8076398372650146
 email-2006-0238,id22,"Eric Lease Morgan Head, Digital Access and Information Architecture Department University Libraries of Notre Dame",0.8076398372650146
 email-2006-0301,id17,-- Eric Lease Morgan,0.3110070824623108
@@ -255,3 +256,6 @@ email-2016-10194,id23,> > — > Eric Lease Morgan >,0.529758632183075
 email-2016-10199,id8,— Eric Lease Morgan,0.47810155153274536
 email-2016-10201,id1,"On 5/3/2016 10:29 AM, Eric Lease Morgan wrote: >",0.7382774353027344
 email-2016-10220,id3,—Eric Lease Morgan,0.7859387397766113
+=======
+james-principles-2863,id8556,Love.,0.594565212726593
+>>>>>>> 2bd978b0a155d20eb092adb88cddeaf90df0e78a
