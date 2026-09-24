@@ -13,7 +13,7 @@ PROMPTSUMMARIZE = 'Summarize: %s. Respond in plain text only, no markdown format
 PROMPTSYSTEM    = 'You are %s, and you respond in %s.'
 
 # configure models
-LLM      = 'minimax-m3:cloud'
+LLM      = 'glm-5.2:cloud'
 EMBEDDER = 'locusai/multi-qa-minilm-l6-cos-v1'
 
 # configure path names
