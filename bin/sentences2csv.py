@@ -16,7 +16,7 @@ EXTENSION  = '.snt'
 LIBRARY    = 'localLibrary'
 PATTERN    = '*.xml'
 XML        = 'xml'
-MAX_WORKERS = 8  # Adjust based on your system's cores
+MAX_WORKERS = 32  # Adjust based on your system's cores
 
 # require
 from lxml    import etree

@@ -15,7 +15,7 @@ XML='xml'
 EXTENSION='htm'
 HTM='htm'
 XML2HTML='./etc/xml2html.xsl'
-MAX_JOBS=4  # number of parallel jobs to run concurrently
+MAX_JOBS=32  # number of parallel jobs to run concurrently
 
 # get input
 if [[ -z $1 ]]; then

@@ -12,7 +12,7 @@
 XML='xml'
 PATTERN='*.xml'
 MORPHADORN='./bin/morphadorn.py'
-PROCESSES=12
+PROCESSES=36
 
 # get input
 if [[ -z $1 ]]; then
