@@ -7,14 +7,14 @@ LIBRARY        = 'localLibrary'
 DATABASE       = 'sentences.db'
 SANITYCHECK    = "SELECT * FROM sqlite_master WHERE type='table' AND name='fulltext';"
 DROPFULLTEXT   = 'DROP TABLE IF EXISTS fulltext;'
-CREATEFULLTEXT = 'CREATE TABLE fulltext ( title TEXT, item INT, sentence TEXT );\n'
-TEMPLATE       = "INSERT INTO fulltext ( title, item, sentence ) VALUES ( '##TITLE##', '##ITEM##', '##SENTENCE##' );\n"
+CREATEFULLTEXT = 'CREATE TABLE fulltext ( title TEXT, idx TEXT, sentence TEXT );\n'
+TEMPLATE       = "INSERT INTO fulltext ( title, idx, sentence ) VALUES ( '##TITLE##', '##IDX##', '##SENTENCE##' );\n"
 DROPINDX       = 'DROP TABLE IF EXISTS indx;'
-SELECTALL      = 'SELECT * FROM sentences ORDER BY title, item;\n'
+SELECTALL      = 'SELECT * FROM sentences ORDER BY title, idx;\n'
 
 # these are what we want
-CREATEINDX     = 'CREATE VIRTUAL TABLE indx USING FTS5( title, item, sentence );'
-INDEX          = 'INSERT INTO indx SELECT title, item, sentence FROM fulltext;';
+CREATEINDX     = 'CREATE VIRTUAL TABLE indx USING FTS5( title, idx, sentence );'
+INDEX          = 'INSERT INTO indx SELECT title, idx, sentence FROM fulltext;';
 
 # require
 import os
@@ -51,7 +51,7 @@ for record in connection.execute( SELECTALL ) :
 
 	# parse
 	title    = record[ 0 ] 
-	item     = record[ 1 ]
+	idx      = record[ 1 ]
 	sentence = record[ 2 ]
 	
 	# normalize
@@ -64,17 +64,17 @@ for record in connection.execute( SELECTALL ) :
 	# sql
 	sql = TEMPLATE
 	sql = sql.replace( '##TITLE##', title )
-	sql = sql.replace( '##ITEM##', str( item ) )
+	sql = sql.replace( '##IDX##', str( idx ) )
 	sql = sql.replace( '##SENTENCE##', sentence )
 
 	# debug
 	sys.stderr.write( '     title: ' + title + '\n' )
-	sys.stderr.write( '      item: ' + str( item ) + '\n' )
+	sys.stderr.write( '       idx: ' + str( idx ) + '\n' )
 	sys.stderr.write( '  sentence: ' + sentence + '\n' )
 	sys.stderr.write( '\n' )
 
 	# update
-	with open( transaction, 'a', encoding='utf-8'  ) as handle : handle.write( sql )
+	with open( transaction, 'a', encoding='utf-8' ) as handle : handle.write( sql )
 
 # close the transaction
 with open( transaction, 'a', encoding='utf-8'  ) as handle : handle.write( 'END TRANSACTION;\n' )

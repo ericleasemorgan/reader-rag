@@ -12,7 +12,7 @@
 
 
 # pre-configure
-MODEL         = 'deepseek-v3.1:671b-cloud'
+MODEL         = 'glm-5.2:cloud'
 SYSTEMPROMPT  = 'You are a helpful librarian, and you respond in three sentences.'
 PROMPT        = 'Summarize the following context: %s'
 CONFIGURATION = 'localLibrary'

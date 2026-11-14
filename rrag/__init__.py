@@ -36,13 +36,19 @@ PERSONAS        = 'personas.txt'
 LIBRARY         = 'localLibrary'
 
 # require
-from os.path                  import dirname
-from pandas                   import DataFrame, read_csv
-from pathlib                  import Path
-from rdr                      import configuration, ETC
-from typing                   import List
-import numpy                  as     np
-
+from json       import load
+from math       import exp
+from natsort    import natsorted
+from ollama     import embed, generate
+from os.path    import dirname
+from pandas     import DataFrame, read_csv, read_sql_query
+from pathlib    import Path
+from rdr        import configuration, ETC
+from sqlite_vec import load as vecload
+from sqlite3    import connect
+from typing     import List
+import numpy    as     np
+		
 # initialize
 cwd     = Path( dirname( __file__ ) )
 library = configuration ( LIBRARY )
@@ -63,12 +69,18 @@ class Settings :
 	def get( self, type ) :
 	
 		if type == 'persona' :
-			with open( cwd/RRAGCACHE/CACHEDPERSONA ) as handle : result = handle.read().rstrip()
+			with open( cwd/RRAGCACHE/CACHEDPERSONA ) as handle : content = handle.read().rstrip()
 		
 		elif type == 'length' :
-			with open( cwd/RRAGCACHE/CACHEDLENGTH ) as handle : result = handle.read().rstrip()
+			with open( cwd/RRAGCACHE/CACHEDLENGTH ) as handle : content = handle.read().rstrip()
 				
-		return( result )
+		elif type == 'carrel' :
+			with open( cwd/RRAGCACHE/CACHEDCARREL ) as handle : content = handle.read()
+				
+		elif type == 'results' :
+			content = read_csv( cwd/RRAGCACHE/CACHEDRESULTS )
+				
+		return( content )
 		
 			
 class Summarizer :
@@ -77,11 +89,8 @@ class Summarizer :
 
 	def summarize( self ) : 
 	
-		# require
-		from ollama import generate
-
 		# initialize
-		sentences  = Citations( read_csv( cwd/RRAGCACHE/CACHEDRESULTS ) ).to_sentences()
+		sentences  = Citations().to_sentences()
 		paragraphs = ' '.join( sentences )
 		prompt     = PROMPTSUMMARIZE % ( paragraphs )
 		system     = PROMPTSYSTEM % ( Settings().get( 'persona' ), Settings().get( 'length' ) )
@@ -98,11 +107,8 @@ class Elaborate :
 
 	def elaborate( self, request ) : 
 	
-		# require
-		from ollama import generate
-
 		# initialize
-		sentences  = Citations( read_csv( cwd/RRAGCACHE/CACHEDRESULTS ) ).to_sentences()
+		sentences  = Citations().to_sentences()
 		paragraphs = ' '.join( sentences )
 		prompt     = PROMPTELABORATE % ( request, paragraphs )
 		system     = PROMPTSYSTEM % ( Settings().get( 'persona' ), Settings().get( 'length' ) )
@@ -117,11 +123,37 @@ class Cacher :
 
 	def __init__( self ) : return( None )
 	
-	def cache( self, type, results ) :
+	def cache( self, type, content ) :
 	
 		if type == 'results' : 
-			with open( cwd/RRAGCACHE/CACHEDRESULTS, 'w' ) as handle : handle.write( results.to_csv( index = False ) )
+			with open( cwd/RRAGCACHE/CACHEDRESULTS, 'w' ) as handle : handle.write( content.to_csv( index = False ) )
 
+		elif type == 'carrel' : 
+			with open( cwd/RRAGCACHE/CACHEDCARREL, 'w' ) as handle : handle.write( content )
+
+
+class Matcher : 
+
+	def __init__( self ) : return( None )
+
+	def match( self, carrel, query ) :
+			
+		# configure
+		TEMPLATE = "SELECT title AS 'titles', idx, sentence as 'sentences', rank as 'distances' FROM indx WHERE indx MATCH '##QUERY##' ORDER BY RANK ASC;"
+					
+		# initialize
+		database   = configuration( LIBRARY )/carrel/ETC/DATABASE
+		connection = connect( database )
+				
+		# build sql, search, sort, output, and done
+		sql   = TEMPLATE.replace( '##QUERY##', query )
+		items = read_sql_query( sql, connection )
+		items = items.sort_values( [ 'titles', 'idx' ] )
+
+		# cache and done
+		Cacher().cache( 'results', items)
+		Cacher().cache( 'carrel', carrel )
+		return( items )
 
 class Searcher : 
 	
@@ -133,12 +165,6 @@ class Searcher :
 		COLUMNS = [ 'titles', 'idx', 'sentences', 'distances' ]
 		SELECT  = "SELECT title, idx, sentence, VEC_DISTANCE_L2(embedding, ?) AS distance FROM sentences ORDER BY distance LIMIT ?"
 			
-		# require
-		from ollama     import embed
-		from sqlite_vec import load as vecload
-		from sqlite3    import connect
-		from natsort    import natsorted
-		
 		# update
 		self.query = query
 		self.depth = depth
@@ -169,8 +195,9 @@ class Searcher :
 		items = DataFrame( items, columns=COLUMNS )
 		items = items.sort_values( [ 'titles', 'idx' ] )
 
-		# cache the results and return them
+		# cache and done
 		Cacher().cache( 'results', items )
+		Cacher().cache( 'carrel', carrel )
 		return( items )
 
 
@@ -182,23 +209,24 @@ class Searcher :
 		
 class Citations :
 
-	def __init__( self, dataframe ) : self.original = dataframe
+	def __init__( self ) : return( None )
 	
 	def to_sentences( self ) :
-	
+			
+		# initialize; get the previously cached results
+		items = Settings().get( 'results' )
+
 		# create a list of sentences and done
 		sentences = []
-		for index, row in self.original.iterrows() : sentences.append( row[ 'sentences' ] )
+		for index, row in items.iterrows() : sentences.append( row[ 'sentences' ] )
 		return( sentences )
 
 			
-	def to_citations( self, carrel ) :
-			
-		# require
-		from json import load
-		
-		# initialize
-		items = self.original
+	def to_citations( self, format ) :
+					
+		# initialize; get the previously cached results
+		items  = Settings().get( 'results' )
+		carrel = Settings().get( 'carrel' )
 		
 		# create a list of items sorted by the number of times they were cited
 		items = items.groupby( [ 'titles' ], as_index=False )[ 'sentences' ].count()
@@ -230,8 +258,13 @@ class Citations :
 					citations.append( { 'id':id, 'author':author, 'title': title, 'date':date, 'summary':summary, 'keywords':keywords, 'extension':extension, 'count':count } )
 					break
 					
-		# done
-		return( citations )
+		# convert to a data frame
+		citations = DataFrame( citations )
+		
+		# branch and done
+		if   format == 'json' : return( citations.to_json( orient='records' ) )
+		elif format == 'tsv'  : return( citations.to_csv( sep='\t', header=False, index=False ) )
+		elif format == 'csv'  : return( citations.to_csv( index=False ) )
 
 
 class Reformatter :
@@ -250,7 +283,7 @@ class Reformatter :
 		from sklearn.metrics.pairwise import cosine_similarity
 		
 		# read the cache
-		sentences = Citations( read_csv( cwd/RRAGCACHE/CACHEDRESULTS ) ).to_sentences()
+		sentences = Citations().to_sentences()
 				
 		# vectorize and activate similaritites; for longer sentences increase the value of PSIZE
 		embeddings = embed( model=EMBEDDER, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
@@ -309,8 +342,6 @@ class Reformatter :
 
 	def rev_sigmoid( self, x:float )->float :
 		''''Don't understand what this function does'''
-	
-		from math  import exp
 
 		return ( 1 / ( 1 + exp( 0.5*x ) ) )
 

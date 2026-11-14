@@ -21,8 +21,8 @@
 
 # configure
 MODEL    = 'locusai/multi-qa-minilm-l6-cos-v1'
-CREATE   = "CREATE TABLE sentences (title TEXT, item INT, sentence TEXT, embedding FLOAT[384] CHECK (TYPEOF(embedding)=='blob' AND VEC_LENGTH(embedding)==384))"
-INSERT   = "INSERT INTO sentences (title, item, sentence, embedding) VALUES (?, ?, ?, ?)"
+CREATE   = "CREATE TABLE sentences (title TEXT, idx TEXT, sentence TEXT, embedding FLOAT[384] CHECK (TYPEOF(embedding)=='blob' AND VEC_LENGTH(embedding)==384))"
+INSERT   = "INSERT INTO sentences (title, idx, sentence, embedding) VALUES (?, ?, ?, ?)"
 PATTERN  = '*.snt'
 LIBRARY  = 'localLibrary'
 DATABASE = 'sentences.db'
@@ -74,8 +74,11 @@ for index, file in enumerate( cache.glob( PATTERN ) ):
 	stderr.write( '  %s (%s)\n' % ( file, str( count ) ) )
 		
 	# re-initialize and normalize
-	sentences = list( read_csv( file )[ 'sentence' ] )
+	records   = read_csv( file )
+	sentences = list( records[ 'sentence' ] )
 	sentences = [ str( sentence ) for sentence in sentences ]
+	indexes   = list( records[ 'idx' ] )
+	indexes   = [ str( index ) for index in indexes ]
 	
 	# vectorize the sentences; cpu-intensive
 	try :
@@ -84,12 +87,12 @@ for index, file in enumerate( cache.glob( PATTERN ) ):
 		embeddings = embed( model=MODEL, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
 	
 		# process each sentence/embeddding combination
-		item = 0
-		for sentence, embedding in zip( sentences, embeddings ) :
+		#item = 0
+		for sentence, index, embedding in zip( sentences, indexes, embeddings ) :
 			
 			# do the inserts
-			item += 1
-			database.execute( INSERT, [ title, item, sentence, serialize( embedding ) ] )	
+			#item += 1
+			database.execute( INSERT, [ title, index, sentence, serialize( embedding ) ] )	
 
 	except ResponseError as e:
 

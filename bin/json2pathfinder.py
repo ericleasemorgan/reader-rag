@@ -11,7 +11,7 @@
 
 # configure
 LIBRARY             = 'localLibrary'
-LLM                 = 'deepseek-v3.1:671b-cloud'
+LLM                 = 'glm-5.2:cloud'
 PROMPTSYSTEM        = 'You are a helpful academic librarian, and you respond in four sentences.'
 PROMPTELABORATE     = 'What is "%s", and use only the following as the source of the answer: %s'
 TEMPLATE            = '../etc/json2pathfinder-template.txt'

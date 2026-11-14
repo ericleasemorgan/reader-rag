@@ -5,37 +5,60 @@
 # Eric Lease Morgan <eric_morgan@infomotions.com>
 # (c) Infomotions, LLC; distributed under a GNU Public License
 
-# June  3, 2026 - started yesterday, and today embellished search
-# June  4, 2026 - added lexicons to search
-# June 11, 2026 - added reformat
+# June      3, 2026 - started yesterday, and today embellished search
+# June      4, 2026 - added lexicons to search
+# June     11, 2026 - added reformat
+# November 13, 2026 - added match
 
 
 # require
-from rrag import Searcher, Citations, Cacher, Summarizer, Settings, Elaborate, Reformatter
+from json    import dumps
+from pathlib import Path
+from rrag    import Searcher, Citations, Cacher, Summarizer, Settings, Elaborate, Reformatter, Matcher
 import click
+import rdr
+
+
+# match
+@click.command()
+@click.argument( 'carrel' )
+@click.option( '--query',   '-q', default='love' )
+def match( carrel, query ) : 
+	'''Fulltext search <carrel> with <query> and retrieve sentences'''
+
+	# search; results get cached
+	results = Matcher().match( carrel, query )
+
+	# get sentences, format, and done
+	sentences = Citations().to_sentences()
+	paragraph = ' '.join( sentences )
+	click.echo( paragraph )
 
 
 # search
 @click.command()
 @click.argument( 'carrel' )
-@click.option( '--type',    '-t', default='simple', type=click.Choice( [ 'simple', 'keywords', 'unigrams', 'bigrams', 'semantics', 'lexicon' ] ) )
+@click.option( '--type',    '-t', default='simple', type=click.Choice( [ 'simple', 'keywords', 'unigrams', 'bigrams', 'nouns', 'semantics', 'lexicon' ] ) )
 @click.option( '--query',   '-q', default='love' )
 @click.option( '--depth',   '-d', default=1 )
 @click.option( '--breadth', '-b', default=8 )
 def search( carrel, type, query, breadth, depth ) :
-	'''Search <carrel> with <query> and retrieve <depth> sentences'''
+	'''Semantic search <carrel> with <query> and retrieve <depth> sentences'''
 	
 	# configure
 	LIBRARY = 'localLibrary'
 	
-	# require
-	import rdr
-
 	if type == 'lexicon' :
 	
 		lexicon = rdr.configuration( LIBRARY )/carrel/( rdr.ETC )/( rdr.LEXICON )
 		with open( lexicon ) as handle : lexicon = handle.read().splitlines()
 		query = ' '.join( lexicon )
+	
+	if type == 'nouns' :
+	
+		nouns = rdr.pos( carrel, select='words', like='N', count=True, normalize=True ).splitlines()[ :breadth ]
+		nouns = [ noun.split( '\t' )[ 0 ] for noun in nouns ]
+		query = ' '.join( nouns )
 	
 	if type == 'keywords' :
 	
@@ -77,12 +100,12 @@ def search( carrel, type, query, breadth, depth ) :
 			semantics.append( query )
 			query     = ' '.join( semantics )
 		
-	# search, get sentences, and format
-	results   = Searcher().search( carrel, query, depth )
-	sentences = Citations( results ).to_sentences()
+	# search; results get cached
+	results = Searcher().search( carrel, query, depth )
+
+	# get sentences, format, and done
+	sentences = Citations().to_sentences()
 	paragraph = ' '.join( sentences )
-	
-	# done
 	click.echo( paragraph )
 
 
@@ -111,19 +134,14 @@ def elaborate( question ) :
 # get settings
 @click.command()
 def get() : 
-	'''Get preferences'''
+	'''Get preferences and caches'''
 	
 	# configure
-	SETTINGS = [ 'persona', 'length' ]
+	SETTINGS = [ 'persona', 'length', 'carrel' ]
 	
-	# require
-	from json import dumps
-	
-	# create a list of all the settings
+	# create a list of all the settings and done
 	settings = {}
 	for setting in SETTINGS : settings[ setting ] = Settings().get( setting )
-	
-	# done
 	click.echo( dumps( settings ) )
 
 
@@ -138,9 +156,6 @@ def set( setting ) :
 	LENGTHS  = 'lengths.txt'
 	ETC      = 'etc'
 
-	# require
-	from pathlib import Path
-
 	# initialize
 	if setting   == 'persona' : choices = PERSONAS
 	elif setting == 'length'  : choices = LENGTHS
@@ -152,6 +167,14 @@ def set( setting ) :
 	# save and done
 	Settings().set( setting, choice )
 	click.echo( 'Success. The %s has been set to "%s".' % ( setting, choice ) )
+	
+	
+# cite
+@click.command()
+@click.argument( 'format', default='json', type=click.Choice( [ 'json', 'csv', 'tsv' ] ) )
+def cite( format ) : 
+	'''Cite results'''
+	click.echo( Citations().to_citations( format ) )
 	
 	
 def choose(lines, type):
@@ -172,8 +195,10 @@ def rrag(): pass
 
 
 # build the commands
+rrag.add_command(cite)
 rrag.add_command(get)
 rrag.add_command(elaborate)
+rrag.add_command(match)
 rrag.add_command(search)
 rrag.add_command(set)
 rrag.add_command(summarize)

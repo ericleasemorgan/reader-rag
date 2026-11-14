@@ -24,6 +24,8 @@ CARREL=$1
 # save the sentences to sets of CSV files
 ./bin/sentences2csv.py $CARREL
 
+exit
+
 # vectororize (index) them
 ./bin/vectorize.py $CARREL
 

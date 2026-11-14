@@ -29,7 +29,7 @@ LIBRARY     = 'localLibrary'
 DATABASE    = 'sentences.db'
 CACHE       = 'sentences'
 VECTORS     = 'vectors.pkl'
-MAX_WORKERS = 4 # Adjust based on your system and Ollama capabilities
+MAX_WORKERS = 1 # Adjust based on your system and Ollama capabilities
 
 # require
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -55,11 +55,13 @@ def process_file( file_path, model ):
 		# re-initialize and normalize
 		title = file_path.stem
 		records = read_csv( file_path )
-		sentences = [ str( sentence ) for sentence in records[ 'sentence' ] ]
-		indexes = [ str( index ) for index in records[ 'idx' ] ]
+		sentences = [ str( sentence ) for sentence in records[ 'sentence' ] ]		
+		prindexes = [ str( index ) for index in records[ 'idx' ] ]
 		
 		# vectorize the sentences; cpu-intensive
 		embeddings = embed( model=model, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
+		
+		exit()
 		
 		# prepare batch rows for executemany
 		rows = [
@@ -89,12 +91,13 @@ with connect( db_path ) as database :
 	database.enable_load_extension( True )
 	load( database )
 	database.execute( CREATE )
-	
+		
 	# process each text in the given carrel in parallel
 	stderr.write( "Indexing texts\n" )
 	files = list( cache.glob( PATTERN ) )
 	
 	with ThreadPoolExecutor( max_workers=MAX_WORKERS ) as executor:
+	
 		futures = { executor.submit( process_file, file, MODEL ): file for file in files }
 		
 		count = 0
