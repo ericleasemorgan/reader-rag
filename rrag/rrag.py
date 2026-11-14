@@ -9,6 +9,7 @@
 # June      4, 2026 - added lexicons to search
 # June     11, 2026 - added reformat
 # November 13, 2026 - added match
+# November 14, 2026 - hard-coded personas and lengths
 
 
 # require
@@ -152,16 +153,14 @@ def set( setting ) :
 	'''Set preferences'''
 	
 	# configure
-	PERSONAS = 'personas.txt'
-	LENGTHS  = 'lengths.txt'
-	ETC      = 'etc'
+	PERSONAS = [ 'a child in the second grade', 'a child in the eigth grade', 'a high school valedictorian', 'a sophmoric college student', 'a helpful librarian', 'a sarcastic librarian', 'a university professor', 'an erudite scholar', 'an artist' ]
+	LENGTHS  = [ 'a single word', 'two words', 'four words', 'a single sentence', 'two sentences', 'four sentences', 'one paragraph', 'two paragraphs', 'four paragraphs' ]
 
 	# initialize
 	if setting   == 'persona' : choices = PERSONAS
 	elif setting == 'length'  : choices = LENGTHS
 	
 	# read, display, and get a setting
-	with open( Path( ETC )/choices ) as handle : choices = handle.read().splitlines()
 	choice = choose( choices, setting )
 	
 	# save and done
@@ -203,6 +202,7 @@ rrag.add_command(search)
 rrag.add_command(set)
 rrag.add_command(summarize)
 rrag.add_command(reformat)
+
 
 # go
 if __name__ == '__main__': rrag()
