@@ -5,7 +5,8 @@
 # Eric Lease Morgan <eric_morgan@infomotions.com>
 # (c) Infomotions, LLC; distributed under a GNU Public License
 
-# June 12, 2026 - first cut
+# June     12, 2026 - first cut
+# November 14, 2026 - added full text index; vectorize.py broke on under Golden Gate
 
 
 # get input
@@ -24,13 +25,14 @@ CARREL=$1
 # save the sentences to sets of CSV files
 ./bin/sentences2csv.py $CARREL
 
-exit
-
 # vectororize (index) them
 ./bin/vectorize.py $CARREL
 
 # transform the XML into HTML
 ./bin/xml2htm.sh $CARREL
+
+# create a full text (not semantic) index
+./bin/index-fulltext.py $CARREL
 
 # done
 exit
