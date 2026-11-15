@@ -1,12 +1,8 @@
+__pycache__
+./rrag/cache/cached-carrel.txt
+./rrag/cache/cached-length.txt
+./rrag/cache/cached-persona.txt
+./rrag/cache/cached-results.txt
 .DS_Store
 images/*
 x-*
-./etc/cached-carrel.txt
-./etc/cached-cites.txt
-./etc/cached-length.txt
-./etc/cached-persona.txt
-./etc/cached-query.txt
-./etc/cached-results.txt
-./etc/context.txt
-__pycache__
-rrag/cache/cached-results.csv
