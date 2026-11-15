@@ -14,7 +14,7 @@ LIBRARY             = 'localLibrary'
 LLM                 = 'glm-5.2:cloud'
 PROMPTSYSTEM        = 'You are a helpful academic librarian, and you respond in four sentences.'
 PROMPTELABORATE     = 'What is "%s", and use only the following as the source of the answer: %s'
-TEMPLATE            = '../etc/json2pathfinder-template.txt'
+TEMPLATE            = './etc/template-json2pathfinder.txt'
 ELABORATE           = True
 THRESHOLD           = 1
 PATHFINDER          = 'pathfinder.htm'
@@ -30,7 +30,7 @@ from os       import chdir
 from os.path  import dirname, abspath
 
 # make sane
-chdir( dirname( abspath( __file__ ) ) )
+#chdir( dirname( abspath( __file__ ) ) )
 
 # get input
 if len( argv ) != 2 : exit( 'Usage: ' + argv[ 0 ] + " <carrel>" )
