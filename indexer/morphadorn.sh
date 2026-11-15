@@ -11,7 +11,7 @@
 # configure
 XML='xml'
 PATTERN='*.xml'
-MORPHADORN='./bin/morphadorn.py'
+MORPHADORN='./morphadorn.py'
 PROCESSES=36
 
 # get input
@@ -25,4 +25,4 @@ CARREL=$1
 LIBRARY=$(rdr get)
 
 # get and process each txt file
-find "$LIBRARY/$CARREL/$XML" -name $PATTERN | xargs -n 1 -P $PROCESSES $MORPHADORN
+find "$LIBRARY/$CARREL/$XML" -name "$PATTERN" | xargs -n 1 -P $PROCESSES $MORPHADORN

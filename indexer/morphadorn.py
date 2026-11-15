@@ -11,7 +11,7 @@
 # configure
 MODEL    = 'en_core_web_sm'
 ENCODING = 'UTF-8'
-STYLE    = './etc/add-id.xsl'
+STYLE    = 'add-id.xsl'
 MAX      = 1600000
 
 # require

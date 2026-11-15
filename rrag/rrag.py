@@ -9,7 +9,7 @@
 # June      4, 2026 - added lexicons to search
 # June     11, 2026 - added reformat
 # November 13, 2026 - added match
-# November 14, 2026 - hard-coded personas and lengths
+# November 14, 2026 - hard-coded personas and lengths; calling it version 0.0.2
 
 
 # require
@@ -116,6 +116,14 @@ def summarize() :
 	'''Distill search results'''
 	click.echo( Summarizer().summarize() )
 
+# review
+@click.command()
+def review() : 
+	'''Echo search results'''
+	sentences = Citations().to_sentences()
+	paragraph = ' '.join( sentences )
+	click.echo( paragraph )
+
 
 # reformat
 @click.command()
@@ -135,7 +143,7 @@ def elaborate( question ) :
 # get settings
 @click.command()
 def get() : 
-	'''Get preferences and caches'''
+	'''Output preferences and caches'''
 	
 	# configure
 	SETTINGS = [ 'persona', 'length', 'carrel' ]
@@ -150,7 +158,7 @@ def get() :
 @click.command()
 @click.argument( 'setting', default='persona', type=click.Choice( [ 'persona', 'length' ] ) )
 def set( setting ) : 
-	'''Set preferences'''
+	'''Define preferences'''
 	
 	# configure
 	PERSONAS = [ 'a child in the second grade', 'a child in the eigth grade', 'a high school valedictorian', 'a sophmoric college student', 'a helpful librarian', 'a sarcastic librarian', 'a university professor', 'an erudite scholar', 'an artist' ]
@@ -172,7 +180,7 @@ def set( setting ) :
 @click.command()
 @click.argument( 'format', default='json', type=click.Choice( [ 'json', 'csv', 'tsv' ] ) )
 def cite( format ) : 
-	'''Cite results'''
+	'''Get bibliographics of results'''
 	click.echo( Citations().to_citations( format ) )
 	
 	
@@ -195,13 +203,14 @@ def rrag(): pass
 
 # build the commands
 rrag.add_command(cite)
-rrag.add_command(get)
 rrag.add_command(elaborate)
+rrag.add_command(get)
 rrag.add_command(match)
+rrag.add_command(reformat)
+rrag.add_command(review)
 rrag.add_command(search)
 rrag.add_command(set)
 rrag.add_command(summarize)
-rrag.add_command(reformat)
 
 
 # go

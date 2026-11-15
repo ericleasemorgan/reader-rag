@@ -7,6 +7,7 @@
 
 # June     12, 2026 - first cut
 # November 14, 2026 - added full text index; vectorize.py broke on under Golden Gate
+# November 15, 2026 - didn't really break
 
 
 # get input
@@ -16,24 +17,34 @@ if [[ -z $1 ]]; then
 fi
 CARREL=$1
 
+# make sane
+cd "$(dirname "$0")"
+
 # create rudimentary XML filess
-./bin/txt2xml.sh $CARREL
+echo -e "\nStep #1 of 6: Transforming plain text to XML" >&2
+./txt2xml.sh $CARREL
 
 # markup the sentences in them
-./bin/morphadorn.sh $CARREL
+echo -e "\nStep #2 of 6: Parsing XML into sentences" >&2
+./morphadorn.sh $CARREL
 
 # save the sentences to sets of CSV files
-./bin/sentences2csv.py $CARREL
+echo -e "\nStep #3 of 6: Extracting sentences to CSV files" >&2
+./sentences2csv.py $CARREL
 
 # vectororize (index) them
-./bin/vectorize.py $CARREL
+echo -e "\nStep #4 of 6: Semantically indexing sentences" >&2
+./vectorize.py $CARREL
 
 # transform the XML into HTML
-./bin/xml2htm.sh $CARREL
+echo -e "\nStep #5 of 6: Transforming XML into HTML" >&2
+./xml2htm.sh $CARREL
 
 # create a full text (not semantic) index
-./bin/index-fulltext.py $CARREL
+echo -e "\nStep #6 of 6: Full text indexing sentences" >&2
+./index-fulltext.py $CARREL
 
 # done
+echo -e "\nDone" >&2
 exit
 

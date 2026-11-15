@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# txt2xml.sh - a front-end to txt2xml.py
+# xml2htm.sh - transform TEI files into HTML files
 
 # Eric Lease Morgan <eric_morgan@infomotions.com>
 # (c) Infomotions, LLC; distributed under a GNU Public License
@@ -10,12 +10,12 @@
 
 
 # configure
-TXT='txt'
-PATTERN='*.txt'
-TXT2XML='./bin/txt2xml.py'
+PATTERN='*.xml'
 XML='xml'
-EXTENSION='xml'
-MAX_JOBS=32 # number of parallel jobs to run concurrently
+EXTENSION='htm'
+HTM='htm'
+XML2HTML='xml2html.xsl'
+MAX_JOBS=32  # number of parallel jobs to run concurrently
 
 # get input
 if [[ -z $1 ]]; then
@@ -28,28 +28,28 @@ CARREL=$1
 LIBRARY=$(rdr get)
 
 # make sane
-rm -rf "$LIBRARY/$CARREL/$XML"
-mkdir "$LIBRARY/$CARREL/$XML"
+rm -rf "$LIBRARY/$CARREL/$HTM"
+mkdir "$LIBRARY/$CARREL/$HTM"
 
-# get and process each txt file in parallel using xargs
-find "$LIBRARY/$CARREL/$TXT" -name "$PATTERN" -print0 | \
+# get and process each xml file in parallel using xargs
+find "$LIBRARY/$CARREL/$XML" -name "$PATTERN" -print0 | \
 xargs -0 -P "$MAX_JOBS" -I {} bash -c '
     FILE="$1"
     OUTDIR="$2"
     EXT="$3"
-    SCRIPT="$4"
+    XSLT="$4"
     
     # debug
     echo "$FILE" >&2
-    
+            
     # get key and output
     BASENAME=$(basename "$FILE")
     BASENAME="${BASENAME%.*}"
     OUTPUT="$OUTDIR/$BASENAME.$EXT"
     
     # do the work
-    "$SCRIPT" "$FILE" "$BASENAME" > "$OUTPUT"
-' _ {} "$LIBRARY/$CARREL/$XML" "$EXTENSION" "$TXT2XML"
+    xsltproc "$XSLT" "$FILE" > "$OUTPUT"
+' _ {} "$LIBRARY/$CARREL/$HTM" "$EXTENSION" "$XML2HTML"
 
 # done
 exit
