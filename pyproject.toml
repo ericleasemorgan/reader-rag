@@ -1,6 +1,6 @@
 [project]
 name = "rrag"
-version = "0.0.1"
+version = "0.0.2"
 description = "A retieval-augmented generation (RAG) system applied against Distant Reader study carrels"
 dependencies = [
 	"numpy",
