@@ -49,7 +49,7 @@ def match( carrel, query ) :
 @click.option( '--query',   '-q', default='love' )
 @click.option( '--depth',   '-d', default=1 )
 @click.option( '--breadth', '-b', default=8 )
-def search( carrel, type, query, breadth, depth ) :
+def search( carrel, type, query, depth, breadth ) :
 	'''Semantic search <carrel> with <query>'''
 	
 	if type == 'lexicon' :
