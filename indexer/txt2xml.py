@@ -10,7 +10,7 @@
 
 # configure
 SLUG     = '•'
-TEMPLATE = './tei-template.xml'
+TEMPLATE = 'tei-template.xml'
 
 # require
 from re  import sub

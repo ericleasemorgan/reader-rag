@@ -42,7 +42,7 @@ echo -e "\nStep #5 of 6: Transforming XML into HTML" >&2
 
 # create a full text (not semantic) index
 echo -e "\nStep #6 of 6: Full text indexing sentences" >&2
-./index-fulltext.py $CARREL
+./fulltext-indexer.py $CARREL
 
 # done
 echo -e "\nDone" >&2
