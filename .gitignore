@@ -1,8 +1,5 @@
 __pycache__
-./rrag/cache/cached-carrel.txt
-./rrag/cache/cached-length.txt
-./rrag/cache/cached-persona.txt
-./rrag/cache/cached-results.csv
+./rrag/cache/*
 .DS_Store
 images/*
 x-*

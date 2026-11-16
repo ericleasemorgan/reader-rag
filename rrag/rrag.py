@@ -12,6 +12,12 @@
 # November 14, 2026 - hard-coded personas and lengths; calling it version 0.0.2
 
 
+# configure
+LIBRARY  = 'localLibrary'
+SETTINGS = [ 'persona', 'length', 'carrel', 'type', 'query' ]
+PERSONAS = [ 'a child in the second grade', 'a child in the eigth grade', 'a high school valedictorian', 'a sophmoric college student', 'a helpful librarian', 'a sarcastic librarian', 'a university professor', 'an erudite scholar' ]
+LENGTHS  = [ 'a single word', 'two words', 'four words', 'a single sentence', 'two sentences', 'four sentences', 'one paragraph', 'two paragraphs', 'four paragraphs' ]
+
 # require
 from json    import dumps
 from pathlib import Path
@@ -25,7 +31,7 @@ import rdr
 @click.argument( 'carrel' )
 @click.option( '--query',   '-q', default='love' )
 def match( carrel, query ) : 
-	'''Fulltext search <carrel> with <query> and retrieve sentences'''
+	'''Fulltext search <carrel> with <query>'''
 
 	# search; results get cached
 	results = Matcher().match( carrel, query )
@@ -44,10 +50,7 @@ def match( carrel, query ) :
 @click.option( '--depth',   '-d', default=1 )
 @click.option( '--breadth', '-b', default=8 )
 def search( carrel, type, query, breadth, depth ) :
-	'''Semantic search <carrel> with <query> and retrieve <depth> sentences'''
-	
-	# configure
-	LIBRARY = 'localLibrary'
+	'''Semantic search <carrel> with <query>'''
 	
 	if type == 'lexicon' :
 	
@@ -116,6 +119,7 @@ def summarize() :
 	'''Distill search results'''
 	click.echo( Summarizer().summarize() )
 
+
 # review
 @click.command()
 def review() : 
@@ -145,9 +149,6 @@ def elaborate( question ) :
 def get() : 
 	'''Output preferences and caches'''
 	
-	# configure
-	SETTINGS = [ 'persona', 'length', 'carrel' ]
-	
 	# create a list of all the settings and done
 	settings = {}
 	for setting in SETTINGS : settings[ setting ] = Settings().get( setting )
@@ -160,10 +161,6 @@ def get() :
 def set( setting ) : 
 	'''Define preferences'''
 	
-	# configure
-	PERSONAS = [ 'a child in the second grade', 'a child in the eigth grade', 'a high school valedictorian', 'a sophmoric college student', 'a helpful librarian', 'a sarcastic librarian', 'a university professor', 'an erudite scholar', 'an artist' ]
-	LENGTHS  = [ 'a single word', 'two words', 'four words', 'a single sentence', 'two sentences', 'four sentences', 'one paragraph', 'two paragraphs', 'four paragraphs' ]
-
 	# initialize
 	if setting   == 'persona' : choices = PERSONAS
 	elif setting == 'length'  : choices = LENGTHS

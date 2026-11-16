@@ -28,6 +28,7 @@ CACHEDQUERY     = 'cached-query.txt'
 CACHEDQUESTION  = 'cached-question.txt'
 CACHEDSENTENCES = 'cached-sentences.txt'
 CACHEDPROMPT    = 'system-prompt.txt'
+CACHEDTYPE      = 'cached-type.txt'
 CACHEDRESULTS   = 'cached-results.csv'
 DATABASE        = 'sentences.db'
 INDEXJSON       = 'index.json'
@@ -76,6 +77,12 @@ class Settings :
 				
 		elif type == 'carrel' :
 			with open( cwd/RRAGCACHE/CACHEDCARREL ) as handle : content = handle.read()
+				
+		elif type == 'type' :
+			with open( cwd/RRAGCACHE/CACHEDTYPE ) as handle : content = handle.read()
+				
+		elif type == 'query' :
+			with open( cwd/RRAGCACHE/CACHEDQUERY ) as handle : content = handle.read()
 				
 		elif type == 'results' :
 			content = read_csv( cwd/RRAGCACHE/CACHEDRESULTS )
@@ -131,6 +138,12 @@ class Cacher :
 		elif type == 'carrel' : 
 			with open( cwd/RRAGCACHE/CACHEDCARREL, 'w' ) as handle : handle.write( content )
 
+		elif type == 'query' : 
+			with open( cwd/RRAGCACHE/CACHEDQUERY, 'w' ) as handle : handle.write( content )
+
+		elif type == 'type' : 
+			with open( cwd/RRAGCACHE/CACHEDTYPE, 'w' ) as handle : handle.write( content )
+
 
 class Matcher : 
 
@@ -153,6 +166,8 @@ class Matcher :
 		# cache and done
 		Cacher().cache( 'results', items)
 		Cacher().cache( 'carrel', carrel )
+		Cacher().cache( 'query', query )
+		Cacher().cache( 'type', 'match' )
 		return( items )
 
 class Searcher : 
@@ -198,6 +213,8 @@ class Searcher :
 		# cache and done
 		Cacher().cache( 'results', items )
 		Cacher().cache( 'carrel', carrel )
+		Cacher().cache( 'query', self.query )
+		Cacher().cache( 'type', 'semantic' )
 		return( items )
 
 
