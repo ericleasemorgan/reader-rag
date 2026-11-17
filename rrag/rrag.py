@@ -105,7 +105,7 @@ def search( carrel, type, query, depth, breadth ) :
 			query     = ' '.join( semantics )
 		
 	# search; results get cached
-	results = Searcher().search( carrel, query, depth )
+	results = Searcher().search( carrel, query )
 
 	# get sentences, format, and done
 	sentences = Citations().to_sentences()

@@ -3,8 +3,9 @@
 # Eric Lease Morgan <emorgan@nd.edu>
 # (c) Infomotions, LLC; distributed under a GNU Public License
 
-# June  2, 2026 - first investigations
-# June 11, 2026 - added bunches o' stuff in previous days; made Reformatter work
+# June      2, 2026 - first investigations
+# June     11, 2026 - added bunches o' stuff in previous days; made Reformatter work
+# November 17, 2026 - adjusted search to use a threshold as well as VEC_DISTANCE_COSINE
 
 
 # configure prompts
@@ -15,10 +16,6 @@ PROMPTSYSTEM    = 'You are %s, and you respond in %s.'
 # configure models
 LLM      = 'glm-5.2:cloud'
 EMBEDDER = 'locusai/multi-qa-minilm-l6-cos-v1'
-
-# configure path names
-RRAGETC   = 'etc'
-RRAGCACHE = 'cache'
 
 # configure file names
 CACHEDCARREL    = 'cached-carrel.txt'
@@ -35,6 +32,9 @@ INDEXJSON       = 'index.json'
 LENGTHS         = 'lengths.txt'
 PERSONAS        = 'personas.txt'
 LIBRARY         = 'localLibrary'
+
+# other
+RRAGCACHE = 'cache'
 
 # require
 from json       import load
@@ -174,15 +174,16 @@ class Searcher :
 	
 	def __init__( self ) : return( None )
 		
-	def search( self, carrel, query, depth ) :
+	def search( self, carrel, query ) :
 			
 		# configure
-		COLUMNS = [ 'titles', 'idx', 'sentences', 'distances' ]
-		SELECT  = "SELECT title, idx, sentence, VEC_DISTANCE_L2(embedding, ?) AS distance FROM sentences ORDER BY distance LIMIT ?"
+		THRESHOLD = 0.75
+		MAXIMUM   = 1024
+		COLUMNS   = [ 'titles', 'idx', 'sentences', 'distances' ]
+		SELECT    = "SELECT title, idx, sentence, VEC_DISTANCE_COSINE(embedding, ?) AS distance FROM sentences ORDER BY distance LIMIT ?"
 			
 		# update
 		self.query = query
-		self.depth = depth
 		
 		# initialize
 		database = connect( library/carrel/ETC/DATABASE, check_same_thread=False )
@@ -191,7 +192,7 @@ class Searcher :
 				
 		# vectorize query and search; get a set of matching records
 		query   = embed( model=EMBEDDER, input=query ).model_dump( mode='json' )[ 'embeddings' ][ 0 ]
-		records = database.execute( SELECT, [ self.serialize( query ), depth ] ).fetchall()
+		records = database.execute( SELECT, [ self.serialize( query ), MAXIMUM ] ).fetchall()
 	
 		# process each result; create a list of items
 		items = []
@@ -203,6 +204,9 @@ class Searcher :
 			sentence = record[ 2 ]
 			distance = record[ 3 ]
 			
+			# short-circuit
+			if distance > THRESHOLD : break
+
 			# update
 			items.append( [ title, idx, sentence, distance ] )
 		
