@@ -37,19 +37,21 @@ LIBRARY         = 'localLibrary'
 RRAGCACHE = 'cache'
 
 # require
-from json       import load
-from math       import exp
-from natsort    import natsorted
-from ollama     import embed, generate
-from os.path    import dirname
-from pandas     import DataFrame, read_csv, read_sql_query
-from pathlib    import Path
-from rdr        import configuration, ETC
-from sqlite_vec import load as vecload
-from sqlite3    import connect
-from typing     import List
-import numpy    as     np
-		
+from json                     import load
+from math                     import exp
+from natsort                  import natsorted
+from ollama                   import embed, generate
+from os.path                  import dirname
+from pandas                   import DataFrame, read_csv, read_sql_query
+from pathlib                  import Path
+from rdr                      import configuration, ETC
+from scipy.signal             import argrelextrema
+from sklearn.metrics.pairwise import cosine_similarity
+from sqlite_vec               import load as vecload
+from sqlite3                  import connect
+from typing                   import List
+import numpy                  as     np
+	
 # initialize
 cwd     = Path( dirname( __file__ ) )
 library = configuration ( LIBRARY )
@@ -178,7 +180,7 @@ class Searcher :
 			
 		# configure
 		THRESHOLD = 0.75
-		MAXIMUM   = 1024
+		MAXIMUM   = 256
 		COLUMNS   = [ 'titles', 'idx', 'sentences', 'distances' ]
 		SELECT    = "SELECT title, idx, sentence, VEC_DISTANCE_COSINE(embedding, ?) AS distance FROM sentences ORDER BY distance LIMIT ?"
 			
@@ -297,11 +299,6 @@ class Reformatter :
 		# configure
 		PSIZE = 16
 		ORDER = 2
-
-		# require
-		from ollama                   import embed
-		from scipy.signal             import argrelextrema
-		from sklearn.metrics.pairwise import cosine_similarity
 		
 		# read the cache
 		sentences = Citations().to_sentences()
@@ -319,7 +316,7 @@ class Reformatter :
 		# Get the order number of the sentences which are in splitting points
 		splits = [ minmima for minmima in minmimas[ 0 ] ]
 			
-		# Create empty string
+		# build result
 		text = ''
 		for index, sentence in enumerate( sentences ) :
 		
@@ -363,7 +360,6 @@ class Reformatter :
 
 	def rev_sigmoid( self, x:float )->float :
 		''''Don't understand what this function does'''
-
 		return ( 1 / ( 1 + exp( 0.5*x ) ) )
 
 

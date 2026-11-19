@@ -122,11 +122,23 @@ def summarize() :
 
 # review
 @click.command()
-def review() : 
-	'''Echo search results'''
-	sentences = Citations().to_sentences()
-	paragraph = ' '.join( sentences )
-	click.echo( paragraph )
+@click.argument( 'format', default='sentences', type=click.Choice( [ 'sentences', 'csv' ] ) )
+def review( format) : 
+	'''Echo search results in the form of <format>'''
+	
+	# branch
+	if format == 'sentences' :
+	
+		sentences = Citations().to_sentences()
+		results = ' '.join( sentences )
+	
+	if format == 'csv' :
+	
+		items  = Settings().get( 'results' )
+		results = items.to_csv( index=False )
+
+	# done
+	click.echo( results )
 
 
 # reformat
