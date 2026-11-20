@@ -5,7 +5,6 @@
 # configure
 LIBRARY        = 'localLibrary'
 DATABASE       = 'sentences.db'
-SANITYCHECK    = "SELECT * FROM sqlite_master WHERE type='table' AND name='fulltext';"
 DROPFULLTEXT   = 'DROP TABLE IF EXISTS fulltext;'
 CREATEFULLTEXT = 'CREATE TABLE fulltext ( title TEXT, idx TEXT, sentence TEXT );\n'
 TEMPLATE       = "INSERT INTO fulltext ( title, idx, sentence ) VALUES ( '##TITLE##', '##IDX##', '##SENTENCE##' );\n"
@@ -19,7 +18,7 @@ INDEX          = 'INSERT INTO indx SELECT title, idx, sentence FROM fulltext;';
 # require
 import os
 import re
-import sqlite3
+from sqlite3 import connect
 import tempfile
 import sys
 from rdr import ETC, configuration
@@ -34,7 +33,7 @@ database    = configuration( LIBRARY )/carrel/ETC/DATABASE
 transaction = tempfile.NamedTemporaryFile( delete=False ).name
 
 # connect to database
-connection                 = sqlite3.connect( database )
+connection                 = connect( database )
 connection.isolation_level = None
 cursor                     = connection.cursor()
 	
@@ -97,7 +96,7 @@ connection.execute( INDEX )
 
 # clean up, and done
 os.remove( transaction )
-sys.stderr.write( 'Done. Happy searching!\n' )
+sys.stderr.write( 'Done. You can now do something like "rrag match %s"\n' % carrel )
 exit()
 
 	

@@ -11,40 +11,67 @@
 
 
 # get input
-if [[ -z $1 ]]; then
-	echo "Usage: $0 <carrel>" >&2
+if [[ -z $1 || -z $2 ]]; then
+	echo "Usage: $0 <carrel> <initialize|fulltext|semantics>" >&2
 	exit
 fi
 CARREL=$1
+OPERATION=$2
 
 # make sane
 cd "$(dirname "$0")"
 
-# create rudimentary XML filess
-echo -e "\nStep #1 of 6: Transforming plain text to XML" >&2
-./txt2xml.sh $CARREL
+# transform txt to xml to htm
+if [[ $OPERATION == 'initialize' ]]; then
 
-# markup the sentences in them
-echo -e "\nStep #2 of 6: Parsing XML into sentences" >&2
-./morphadorn.sh $CARREL
+	# create rudimentary XML filess
+	echo -e "\nStep #1 of 5: Transforming plain text to XML" >&2
+	./txt2xml.sh $CARREL
 
-# save the sentences to sets of CSV files
-echo -e "\nStep #3 of 6: Extracting sentences to CSV files" >&2
-./sentences2csv.py $CARREL
+	# markup the sentences in them
+	echo -e "\nStep #2 of 5: Parsing XML into sentences" >&2
+	./morphadorn.sh $CARREL
 
-# vectororize (index) them
-echo -e "\nStep #4 of 6: Semantically indexing sentences" >&2
-./vectorize.py $CARREL
+	# transform the XML into HTML
+	echo -e "\nStep #3 of 5: Transforming XML into HTML" >&2
+	./xml2htm.sh $CARREL
 
-# transform the XML into HTML
-echo -e "\nStep #5 of 6: Transforming XML into HTML" >&2
-./xml2htm.sh $CARREL
+	 # save the sentences to sets of CSV files
+	echo -e "\nStep #4 of 5: TExtracting sentences and caching them to CSV files" >&2
+	./sentences2csv.py $CARREL
 
-# create a full text (not semantic) index
-echo -e "\nStep #6 of 6: Full text indexing sentences" >&2
-./fulltext-indexer.py $CARREL
+	# do the work
+	echo -e "\nStep #5 of 5: TInitializing/creating database.\n" >&2
+	./initialize-database.py $CARREL
 
-# done
-echo -e "\nDone" >&2
-exit
+	echo -e "\nInitialize done.\n" >&2
+	exit
+
+fi
+
+
+# intialize the database
+if [[ $OPERATION == 'fulltext' ]]; then
+
+	# create a full text 
+	echo -e "\nFull text indexing sentences" >&2
+	./fulltext-indexer.py $CARREL
+
+	echo -e "\nFulltext indexing done.\n" >&2
+	exit
+	
+fi
+
+# intialize the database
+if [[ $OPERATION == 'semantics' ]]; then
+
+	# vectororize (index) them
+	echo -e "\nStep #4 of 6: Semantically indexing sentences" >&2
+	./vectorize.py $CARREL
+
+	# done
+	exit
+	
+fi
+
 

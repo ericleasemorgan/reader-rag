@@ -6,6 +6,7 @@
 # June      2, 2026 - first investigations
 # June     11, 2026 - added bunches o' stuff in previous days; made Reformatter work
 # November 17, 2026 - adjusted search to use a threshold as well as VEC_DISTANCE_COSINE
+# November 20, 2026 - adjusting search some more; Happy birthday to me!
 
 
 # configure prompts
@@ -179,8 +180,8 @@ class Searcher :
 	def search( self, carrel, query ) :
 			
 		# configure
-		THRESHOLD = 0.75
-		MAXIMUM   = 256
+		THRESHOLD = 0.6
+		MAXIMUM   = 1024
 		COLUMNS   = [ 'titles', 'idx', 'sentences', 'distances' ]
 		SELECT    = "SELECT title, idx, sentence, VEC_DISTANCE_COSINE(embedding, ?) AS distance FROM sentences ORDER BY distance LIMIT ?"
 			
@@ -205,10 +206,10 @@ class Searcher :
 			idx      = record[ 1 ]
 			sentence = record[ 2 ]
 			distance = record[ 3 ]
-			
+						
 			# short-circuit
 			if distance > THRESHOLD : break
-
+			
 			# update
 			items.append( [ title, idx, sentence, distance ] )
 		
