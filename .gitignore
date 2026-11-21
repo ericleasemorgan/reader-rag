@@ -6,5 +6,4 @@ rrag/cache/cached-results.csv
 rrag/cache/cached-type.txt
 rrag/cache/cached-length.txt
 .DS_Store
-images/*
 x-*

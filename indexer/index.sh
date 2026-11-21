@@ -8,11 +8,12 @@
 # June     12, 2026 - first cut
 # November 14, 2026 - added full text index; vectorize.py broke on under Golden Gate
 # November 15, 2026 - didn't really break
+# November 21, 2026 - adding simplified command-line input
 
 
 # get input
 if [[ -z $1 || -z $2 ]]; then
-	echo "Usage: $0 <carrel> <initialize|fulltext|semantics>" >&2
+	echo "Usage: $0 <carrel> <fulltext|semantics>" >&2
 	exit
 fi
 CARREL=$1
@@ -21,8 +22,8 @@ OPERATION=$2
 # make sane
 cd "$(dirname "$0")"
 
-# transform txt to xml to htm
-if [[ $OPERATION == 'initialize' ]]; then
+# intialize the database
+if [[ $OPERATION == 'fulltext' ]]; then
 
 	# create rudimentary XML filess
 	echo -e "\nStep #1 of 5: Transforming plain text to XML" >&2
@@ -43,15 +44,6 @@ if [[ $OPERATION == 'initialize' ]]; then
 	# do the work
 	echo -e "\nStep #5 of 5: TInitializing/creating database.\n" >&2
 	./initialize-database.py $CARREL
-
-	echo -e "\nInitialize done.\n" >&2
-	exit
-
-fi
-
-
-# intialize the database
-if [[ $OPERATION == 'fulltext' ]]; then
 
 	# create a full text 
 	echo -e "\nFull text indexing sentences" >&2

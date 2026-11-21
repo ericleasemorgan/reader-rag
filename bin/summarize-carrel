@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# summarize-carrel - do exactly what the name implies
+
+# Eric Lease Morgan <eric_morgan@infomotions.com>
+# (c) Infomotions, LLC; distributed under a GNU Public License
+
+# November 21, 2026 - first cut
+
+
+if [[ -z $1 ]]; then
+	echo "Usage: $0 <carrel>" >&2
+	exit
+fi
+CARREL=$1
+
+# get the most significant keywords
+KEYWORDS=$( rdr wrd $CARREL -c | head -n 2 | cut -f1 )
+
+# build a query
+QUERY=$( echo $KEYWORDS | sed "s/ / AND /" )
+KEYWORDS=$( echo $QUERY | sed "s/ AND / and /" )
+
+# find all the sentences containing that keyword
+rrag match $CARREL -q "$QUERY" > /dev/null
+
+# do the work
+clear; echo
+echo "The most signficiant keywords in the carrel named '$CARREL' are $KEYWORDS, and the carrel may be summarized as follows:" | fmt
+echo
+rrag summarize | fmt
+echo

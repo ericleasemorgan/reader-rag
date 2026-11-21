@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+clear; echo
+echo "This is a list of all the carrels in the catalog:" | fmt
+echo
+rdr catalog | tr '\n' ' ' | sed "s/ /; /g" | fmt; echo
+
