@@ -1,9 +1,9 @@
 __pycache__
+.DS_Store
 rrag/cache/cached-carrel.txt
+rrag/cache/cached-length.txt
 rrag/cache/cached-persona.txt
 rrag/cache/cached-query.txt
 rrag/cache/cached-results.csv
 rrag/cache/cached-type.txt
-rrag/cache/cached-length.txt
-.DS_Store
 x-*

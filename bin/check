@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# check.sh - make sure all vectorized databases work
+
+# Eric Lease Morgan <eric_morgan@infomotions.com>
+# (c) Infomotions, LLC; distributed under a GNU Public License
+
+# June 29, 2025 - first cut
+
+
+# configure
+QUERY='love'
+
+# initialize
+LIBRARY=$( rdr get )
+CARRELS=$( rdr catalog )
+
+tabs 24
+
+# process each carrel
+for CARREL in ${CARRELS[@]}; do
+
+	printf "$CARREL\t"
+	RESULT=$( rrag match $CARREL -q $QUERY 2>/dev/null )
+	if [[ ${#RESULT} > 1 ]]; then
+		printf 'INDEXED' >&2; 
+	else
+		printf 'NOT INDEXED' >&2; 
+	fi
+	
+	echo
+	
+# fini
+done
+exit
