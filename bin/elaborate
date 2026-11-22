@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# elaborate - a front-end to rrag elaborate
+
+# Eric Lease Morgan <eric_morgan@infomotions.com>
+# (c) Infomotions, LLC; distributed under a GNU Public Licence
+
+# November 22, 2026 - first cut
+
+if [[ -z $1 ]]; then
+	echo "Usage: $0 <question>" >&2
+	exit
+fi
+QUESTION=$1
+
+clear; echo; rrag elaborate "$QUESTION" | fmt; echo

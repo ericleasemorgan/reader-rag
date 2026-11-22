@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# summarize - a front-end to rrag summarize
+
+# Eric Lease Morgan <eric_morgan@infomotions.com>
+# (c) Infomotions, LLC; distributed under a GNU Public Licence
+
+# November 22, 2026 - first cut
+
+clear; echo; rrag summarize | fmt; echo
