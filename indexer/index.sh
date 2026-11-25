@@ -38,15 +38,15 @@ if [[ $OPERATION == 'fulltext' ]]; then
 	./xml2htm.sh $CARREL
 
 	 # save the sentences to sets of CSV files
-	echo -e "\nStep #4 of 5: TExtracting sentences and caching them to CSV files" >&2
+	echo -e "\nStep #4 of 5: Extracting sentences and caching them to CSV files" >&2
 	./sentences2csv.py $CARREL
 
 	# do the work
-	echo -e "\nStep #5 of 5: TInitializing/creating database.\n" >&2
-	./initialize-database.py $CARREL
+	echo -e "\nStep #5 of 5: Initializing/creating database.\n" >&2
+	./database-initialize.py $CARREL
 
 	# create a full text 
-	echo -e "\nFull text indexing sentences" >&2
+	echo -e "\nStep #6 of 5: Full text indexing sentences" >&2
 	./fulltext-indexer.py $CARREL
 
 	echo -e "\nFulltext indexing done.\n" >&2
