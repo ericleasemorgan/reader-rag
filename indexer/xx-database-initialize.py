@@ -10,12 +10,15 @@
 
 
 # configure
-CREATE   = "CREATE TABLE sentences (title TEXT, idx TEXT, sentence TEXT, embedding FLOAT[384] CHECK (TYPEOF(embedding)=='blob' AND VEC_LENGTH(embedding)==384))"
-INSERT   = "INSERT INTO sentences (title, idx, sentence, embedding) VALUES (?, ?, ?, ?)"
 LIBRARY  = 'localLibrary'
 DATABASE = 'sentences.db'
-CACHE    = 'sentences'
-PATTERN  = '*.snt'
+
+CREATESENTENCES  = "CREATE TABLE sentences (id INTEGER PRIMARY KEY, title TEXT, idx TEXT, sentence TEXT)"
+CREATEFULLTEXT   = "CREATE VIRTUAL TABLE indx USING FTS5( title, idx, sentence, content='sentences', content_rowid='id' )"
+CREATEEMBEDDINGS = "CREATE VIRTUAL TABLE embeddings USING vec0( sentence_id INTEGER PRIMARY KEY, embedding float[384])"
+
+TRIGGERINSERT    = "CREATE TRIGGER sentences_insert AFTER INSERT ON sentences BEGIN INSERT INTO indx(rowid, title, idx, sentences) VALUES (new.id, new.headline, new.body); END"
+
 
 # require
 from pandas     import read_csv
@@ -30,17 +33,21 @@ if len( argv ) != 2 : exit( 'Usage: ' + argv[ 0 ] + " <carrel>" )
 carrel = argv[ 1 ]
 
 # initilize
-cache = configuration( LIBRARY )/carrel/CACHE
-nines = pack(f'{384}f', *([9.9] * 384))
+#cache = configuration( LIBRARY )/carrel/CACHE
 
 # create database
 stderr.write( "Creating database\n" )
 database = configuration( LIBRARY )/carrel/ETC/DATABASE
 database.unlink( missing_ok=True )
 database = connect( database )
-database.enable_load_extension( True )
-load( database )
-database.execute( CREATE )
+#database.enable_load_extension( True )
+#load( database )
+database.execute( CREATESENTENCES )
+#database.execute( CREATEFULLTEXT )
+#database.execute( CREATEEMBEDDINGS )
+#database.execute( TRIGGERINSERT )
+
+exit()
 
 # fill database
 stderr.write( "Filling database with sentences\n" )

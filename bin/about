@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-# summarize-carrel - do exactly what the name implies
+# about - given carrel, get the signficant keywords, do a sentence search, and summarize
 
 # Eric Lease Morgan <eric_morgan@infomotions.com>
 # (c) Infomotions, LLC; distributed under a GNU Public License
 
 # November 21, 2026 - first cut
+# November 26, 2026 - tweaking with new search function
 
 
 if [[ -z $1 ]]; then
@@ -21,12 +22,12 @@ KEYWORDS=$( rdr wrd $CARREL -c | head -n 2 | cut -f1 )
 QUERY=$( echo $KEYWORDS | sed "s/ / AND /" )
 KEYWORDS=$( echo $QUERY | sed "s/ AND / and /" )
 
-# find all the sentences containing that keyword
+# find all the sentences containing the keywords
 rrag match $CARREL -q "$QUERY" > /dev/null
 
 # do the work
 clear; echo
-echo "The most signficiant keywords in the carrel named '$CARREL' are $KEYWORDS, and the carrel may be summarized as follows:" | fmt
+echo "The most signficiant keywords in the carrel named '$CARREL' are $KEYWORDS, and the carrel may characterized as being about the following:" | fmt
 echo
 rrag summarize | fmt
 echo

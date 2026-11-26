@@ -13,7 +13,7 @@
 
 # get input
 if [[ -z $1 || -z $2 ]]; then
-	echo "Usage: $0 <carrel> <fulltext|semantics>" >&2
+	echo "Usage: $0 <carrel> <initialize|fulltext|semantics>" >&2
 	exit
 fi
 CARREL=$1
@@ -23,7 +23,7 @@ OPERATION=$2
 cd "$(dirname "$0")"
 
 # intialize the database
-if [[ $OPERATION == 'fulltext' ]]; then
+if [[ $OPERATION == 'initialize' ]]; then
 
 	# create rudimentary XML filess
 	echo -e "\nStep #1 of 5: Transforming plain text to XML" >&2
@@ -41,15 +41,19 @@ if [[ $OPERATION == 'fulltext' ]]; then
 	echo -e "\nStep #4 of 5: Extracting sentences and caching them to CSV files" >&2
 	./sentences2csv.py $CARREL
 
-	# do the work
-	echo -e "\nStep #5 of 5: Initializing/creating database.\n" >&2
-	./database-initialize.py $CARREL
+	echo -e "\nInitialization complete.\n" >&2
+	exit
+	
+fi
 
-	# create a full text 
-	echo -e "\nStep #6 of 5: Full text indexing sentences" >&2
+# intialize the database
+if [[ $OPERATION == 'fulltext' ]]; then
+
+	# vectororize (index) them
+	echo -e "\nFull text indexing sentences" >&2
 	./fulltext-indexer.py $CARREL
 
-	echo -e "\nFulltext indexing done.\n" >&2
+	# done
 	exit
 	
 fi

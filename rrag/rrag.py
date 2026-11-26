@@ -21,7 +21,7 @@ LENGTHS  = [ 'a single word', 'two words', 'four words', 'a single sentence', 't
 # require
 from json    import dumps
 from pathlib import Path
-from rrag    import Searcher, Citations, Cacher, Summarizer, Settings, Elaborate, Reformatter, Matcher
+from rrag    import Searcher, Citations, Cacher, Summarizer, Settings, Elaborate, Reformatter, Matcher, Hybridizer
 import click
 import rdr
 
@@ -35,6 +35,22 @@ def match( carrel, query ) :
 
 	# search; results get cached
 	results = Matcher().match( carrel, query )
+
+	# get sentences, format, and done
+	sentences = Citations().to_sentences()
+	paragraph = ' '.join( sentences )
+	click.echo( paragraph )
+
+
+# hybrid search
+@click.command()
+@click.argument( 'carrel' )
+@click.option( '--query',   '-q', default='love' )
+def hybrid( carrel, query ) : 
+	'''Hybrid search <carrel> with <query>'''
+
+	# search; results get cached
+	results = Hybridizer().search( carrel, query )
 
 	# get sentences, format, and done
 	sentences = Citations().to_sentences()
@@ -218,6 +234,7 @@ rrag.add_command(match)
 rrag.add_command(reformat)
 rrag.add_command(review)
 rrag.add_command(search)
+rrag.add_command(hybrid)
 rrag.add_command(set)
 rrag.add_command(summarize)
 

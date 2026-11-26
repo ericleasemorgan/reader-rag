@@ -52,7 +52,8 @@ from sqlite_vec               import load as vecload
 from sqlite3                  import connect
 from typing                   import List
 import numpy                  as     np
-	
+from struct                   import pack
+
 # initialize
 cwd     = Path( dirname( __file__ ) )
 library = configuration ( LIBRARY )
@@ -155,14 +156,15 @@ class Matcher :
 	def match( self, carrel, query ) :
 			
 		# configure
-		TEMPLATE = "SELECT title AS 'titles', idx, sentence as 'sentences', rank as 'distances' FROM indx WHERE indx MATCH '##QUERY##' ORDER BY RANK ASC;"
-					
+		LIMIT    = 512
+		TEMPLATE = "SELECT s.title AS titles, s.idx, s.sentence AS sentences, rank AS 'scores' FROM indx JOIN sentences s ON s.id = indx.rowid WHERE indx MATCH '##QUERY##' ORDER BY rank LIMIT ##LIMIT##"
+		
 		# initialize
 		database   = configuration( LIBRARY )/carrel/ETC/DATABASE
 		connection = connect( database )
 				
-		# build sql, search, sort, output, and done
-		sql   = TEMPLATE.replace( '##QUERY##', query )
+		# build sql, search, and sort
+		sql   = TEMPLATE.replace( '##QUERY##', query ).replace( '##LIMIT##', str( LIMIT ) )
 		items = read_sql_query( sql, connection )
 		items = items.sort_values( [ 'titles', 'idx' ] )
 
@@ -173,6 +175,129 @@ class Matcher :
 		Cacher().cache( 'type', 'match' )
 		return( items )
 
+
+class Hybridizer : 
+
+	def __init__( self ) : return( None )
+
+	# hybrid; combined full text and semantic search
+	def search( self, carrel, query ):
+	
+		# configure
+		MODEL           = 'locusai/multi-qa-minilm-l6-cos-v1'
+		LIBRARY         = 'localLibrary'
+		SELECTFULLTEXT  = "SELECT  s.id, s.title, s.idx, s.sentence FROM indx JOIN sentences s ON s.id = indx.rowid WHERE indx MATCH ? ORDER BY rank LIMIT ?"
+		SELECTSEMANTICS = "SELECT  s.id, s.title, s.idx, s.sentence, e.distance FROM (SELECT  sentence_id, distance FROM embeddings WHERE embedding MATCH ? ORDER BY distance LIMIT ?) e JOIN    sentences s ON s.id = e.sentence_id ORDER BY e.distance"
+		DATABASE       = 'sentences.db'
+		LIMIT          = 128
+		RECALL         = 256
+		K_RRF          = 60
+		RELATIVE_DROP  = 0.20
+		COLUMNS        = [ 'titles', 'idx', 'sentences', 'scores' ]
+	
+		# update
+		self.query = query
+
+		# initialize
+		database = configuration( LIBRARY ) / carrel / ETC / DATABASE
+	
+		# connect and load the vec0 extension
+		connection = connect( database )
+		connection.enable_load_extension( True )
+		vecload( connection )
+	
+		# full text search
+		try :
+			fts_results = connection.execute( SELECTFULLTEXT, [ query, RECALL ] ).fetchall()
+		except Exception as e:
+			stderr.write( f"  FTS5 search failed: {e}\n" )
+			fts_results = []
+	
+		# vectorize the query
+		try :
+			query = embed( model=MODEL, input=query ).model_dump( mode='json' )[ 'embeddings' ][ 0 ]
+			query = pack( "%sf" % len( query ), *query )
+		except Exception as e : exit( f"Error generating embedding: {e}" )
+	
+		# semantic search
+		knn_results = connection.execute( SELECTSEMANTICS, [ query, RECALL ] ).fetchall()
+	
+		# close
+		connection.close()
+	
+		# create a list of all the sentences
+		sentences = {}
+		for row in knn_results:
+			sid, title, idx, sentence, distance = row
+			sentences[ sid ] = ( title, idx, sentence )
+	
+		for row in fts_results:
+			sid, title, idx, sentence = row
+			if sid not in sentences: sentences[ sid ] = ( title, idx, sentence )
+	
+		# accumulate RRF scores
+		rrf_scores = {}
+	
+		for rank, row in enumerate( knn_results, 1 ):
+			sid = row[ 0 ]
+			rrf_scores[ sid ] = rrf_scores.get( sid, 0.0 ) + 1.0 / ( K_RRF + rank )
+	
+		for rank, row in enumerate( fts_results,1 ):
+			sid = row[ 0 ]
+			rrf_scores[ sid ] = rrf_scores.get( sid, 0.0 ) + 1.0 / ( K_RRF + rank )
+	
+		# determine which result sources contributed each ID
+		knn_ids = set( row[ 0 ] for row in knn_results )
+		fts_ids = set( row[ 0 ] for row in fts_results )
+	
+		# =============================================
+		# Sort by fused score (descending), apply hard
+		# limit, then apply relative elbow detection to
+		# truncate at the point where scores drop off
+		# by more than RELATIVE_DROP from the previous
+		# result's score.
+		# =============================================
+		sorted_fused = sorted( rrf_scores.items(), key=lambda x: -x[ 1 ] )[ :LIMIT ]
+	
+		fused = []
+		for i, ( sid, score ) in enumerate( sorted_fused ):
+			if i == 0 : fused.append( ( sid, score ) )
+			else:
+				prev_score = sorted_fused[ i - 1 ][ 1 ]
+				score_gap = prev_score - score
+	
+				# calculate relative drop as a fraction of the previous score
+				if prev_score > 0 : relative_drop = score_gap / prev_score
+				else              : relative_drop = 0
+	
+				if relative_drop > RELATIVE_DROP : break
+	
+				fused.append( ( sid, score ) )
+	
+		# =============================================
+		# PART 4: Display results
+		# =============================================
+	
+		if not fused: print( "No results found." )
+		else:
+		
+			items = []
+			for rank, ( sid, score ) in enumerate( fused, 1 ):
+			
+				title, idx, sentence = sentences[ sid ]
+				items.append( [ title, idx, sentence, score ] )
+				
+			items = DataFrame( items, columns=COLUMNS )
+			items = items.sort_values( [ 'titles', 'idx' ] )
+	
+			# cache and done
+			Cacher().cache( 'results', items )
+			Cacher().cache( 'carrel', carrel )
+			Cacher().cache( 'query', self.query )
+			Cacher().cache( 'type', 'hybrid' )
+			return( items )
+
+
 class Searcher : 
 	
 	def __init__( self ) : return( None )
@@ -180,10 +305,10 @@ class Searcher :
 	def search( self, carrel, query ) :
 			
 		# configure
-		THRESHOLD = 0.6
-		MAXIMUM   = 1024
-		COLUMNS   = [ 'titles', 'idx', 'sentences', 'distances' ]
-		SELECT    = "SELECT title, idx, sentence, VEC_DISTANCE_COSINE(embedding, ?) AS distance FROM sentences ORDER BY distance LIMIT ?"
+		THRESHOLD = 1.0
+		MAXIMUM   = 512
+		COLUMNS   = [ 'titles', 'idx', 'sentences', 'scores' ]
+		SELECT    = "SELECT s.title, s.idx, s.sentence, e.distance FROM (SELECT  sentence_id, distance FROM embeddings WHERE embedding MATCH ? ORDER BY distance LIMIT ?) e JOIN    sentences s ON s.id = e.sentence_id ORDER BY e.distance"
 			
 		# update
 		self.query = query
@@ -205,13 +330,13 @@ class Searcher :
 			title    = record[ 0 ]
 			idx      = record[ 1 ]
 			sentence = record[ 2 ]
-			distance = record[ 3 ]
-						
+			score    = record[ 3 ]
+									
 			# short-circuit
-			if distance > THRESHOLD : break
+			if score > THRESHOLD : break
 			
 			# update
-			items.append( [ title, idx, sentence, distance ] )
+			items.append( [ title, idx, sentence, score ] )
 		
 		# create a dataframe of the sentences, sort by title
 		items = DataFrame( items, columns=COLUMNS )
@@ -305,8 +430,10 @@ class Reformatter :
 		sentences = Citations().to_sentences()
 				
 		# vectorize and activate similaritites; for longer sentences increase the value of PSIZE
-		embeddings = embed( model=EMBEDDER, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
-	
+		try : embeddings = embed( model=EMBEDDER, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
+		except Exception as e:
+			exit( f"Error creating embeddings: {str(e)}" )
+		
 		# try to compute similarities
 		try               : similarities = self.activate_similarities( cosine_similarity(embeddings), p_size=PSIZE )
 		except ValueError : return( None )

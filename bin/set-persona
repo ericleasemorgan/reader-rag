@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# set-persona
+
+# Eric Lease Morgan <eric_morgan@infomotions.com>
+# (c) Infomotions, LLC; distributed under a GNU Public License
+
+# November 26, 2026 - first cut; after Thanksgiving dinner
+
+# trivial
+clear; echo; rrag set persona
+
+# done
+exit

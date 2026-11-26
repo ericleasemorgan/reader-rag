@@ -22,12 +22,16 @@
 
 # configure
 MODEL      = 'locusai/multi-qa-minilm-l6-cos-v1'
-UPDATE     = "UPDATE sentences SET embedding = ? WHERE title = ? AND idx = ?"
+INSERT     = "INSERT INTO embeddings (sentence_id, embedding) VALUES (?, ?)"
 PATTERN    = '*.snt'
 LIBRARY    = 'localLibrary'
 DATABASE   = 'sentences.db'
 CACHE      = 'sentences'
 VECTORS    = 'vectors.pkl'
+
+CREATEEMBEDDINGS = "CREATE VIRTUAL TABLE embeddings USING vec0( sentence_id INTEGER PRIMARY KEY, embedding float[384])"
+DROPEMBEDDINGS   = "DROP TABLE IF EXISTS embeddings"
+SELECTALL        = 'SELECT * FROM sentences ORDER BY id\n'
 
 # require
 from numpy      import array
@@ -52,42 +56,60 @@ def serialize( vector: List[ float ] ) -> bytes : return pack( "%sf" % len( vect
 
 # initialize
 cache    = configuration( LIBRARY )/carrel/CACHE
+database = configuration( LIBRARY )/carrel/ETC/DATABASE
 
 # load database
 stderr.write( "Loading database\n" )
-database = configuration( LIBRARY )/carrel/ETC/DATABASE
-database = connect( database )
-database.enable_load_extension( True )
-load( database )
+connection = connect( database )
+connection.enable_load_extension( True )
+load( connection )
+connection.execute( DROPEMBEDDINGS )
+connection.execute( CREATEEMBEDDINGS )
 
 # process each text in the given carrel; reading from the file system when I oguth to read from the database, no?
 stderr.write( "Indexing texts\n" )
-count = 0
-for index, file in enumerate( cache.glob( PATTERN ) ):
+for record in connection.execute( SELECTALL ) :
+
+	# parse
+	id    = record[ 0 ] 
+	title    = record[ 1 ] 
+	idx      = record[ 2 ]
+	sentence = record[ 3 ]
 	
-	# increment and debug
-	title =  file.stem
-	count += 1
-	stderr.write( '  %s (%s)\n' % ( file, str( count ) ) )
+	# normalize
+	#title    = title.replace( "'", "''" )
+	#sentence = sentence.replace( '\r', '\n' )
+	#sentence = sentence.replace( '\n', ' ' )
+	#sentence = sentence.replace( "'",  "''")
+	#sentence = sub( ' +' , ' ', sentence )
+
+	# sql
+	#sql = TEMPLATE
+	#sql = sql.replace( '##TITLE##', title )
+	#sql = sql.replace( '##IDX##', str( idx ) )
+	#sql = sql.replace( '##SENTENCE##', sentence )
+
+	# debug
+	stderr.write( '        id: ' + str(id) + '\n' )
+	stderr.write( '     title: ' + title + '\n' )
+	stderr.write( '       idx: ' + str( idx ) + '\n' )
+	stderr.write( '  sentence: ' + sentence + '\n' )
+	stderr.write( '\n' )
 		
-	# re-initialize and normalize
-	records   = read_csv( file )
-	sentences = list( records[ 'sentence' ] )
-	sentences = [ str( sentence ) for sentence in sentences ]
-	indexes   = list( records[ 'idx' ] )
-	indexes   = [ str( index ) for index in indexes ]
-	
 	# vectorize the sentences; cpu-intensive
 	try :
 	
 		# do the work
-		embeddings = embed( model=MODEL, input=sentences ).model_dump( mode='json' )[ 'embeddings' ]
+		embedding = embed( model=MODEL, input=sentence ).model_dump( mode='json' )[ 'embeddings' ][ 0 ]
 	
+		#print( embedding )
+		#exit()
+		
 		# process each sentence/embeddding combination
-		for sentence, index, embedding in zip( sentences, indexes, embeddings ) :
+		#for sentence, index, embedding in zip( sentences, indexes, embeddings ) :
 			
-			# do the work
-			database.execute( UPDATE, [ serialize( embedding ), title, index ] )	
+		# do the work
+		connection.execute( INSERT, [ id, serialize( embedding ) ] )	
 
 	except ResponseError as e:
 
@@ -95,11 +117,11 @@ for index, file in enumerate( cache.glob( PATTERN ) ):
 		continue
 	
 # commit and close
-database.commit()
-database.close()
+connection.commit()
+connection.close()
 
 # cache vectors to the carrel as a file; the etc directory is becoming bloated
-with open( configuration( LIBRARY )/carrel/ETC/VECTORS, 'wb' ) as handle : dump( array( embeddings ), handle )
+#with open( configuration( LIBRARY )/carrel/ETC/VECTORS, 'wb' ) as handle : dump( array( embeddings ), handle )
 
 # done
 exit()

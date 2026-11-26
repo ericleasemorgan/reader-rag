@@ -3,100 +3,86 @@
 # index.py - make an SQL database full text searchable
 
 # configure
-LIBRARY        = 'localLibrary'
-DATABASE       = 'sentences.db'
-DROPFULLTEXT   = 'DROP TABLE IF EXISTS fulltext;'
-CREATEFULLTEXT = 'CREATE TABLE fulltext ( title TEXT, idx TEXT, sentence TEXT );\n'
-TEMPLATE       = "INSERT INTO fulltext ( title, idx, sentence ) VALUES ( '##TITLE##', '##IDX##', '##SENTENCE##' );\n"
-DROPINDX       = 'DROP TABLE IF EXISTS indx;'
-SELECTALL      = 'SELECT * FROM sentences ORDER BY title, idx;\n'
+LIBRARY  = 'localLibrary'
+DATABASE = 'sentences.db'
+CACHE    = 'sentences'
+PATTERN  = '*.snt'
 
-# these are what we want
-CREATEINDX     = 'CREATE VIRTUAL TABLE indx USING FTS5( title, idx, sentence );'
-INDEX          = 'INSERT INTO indx SELECT title, idx, sentence FROM fulltext;';
+# SQL statements
+CREATEINDX      = 'CREATE VIRTUAL TABLE indx USING FTS5( title, idx, sentence );'
+CREATEINDX      = "CREATE VIRTUAL TABLE indx USING FTS5( title, idx, sentence, content='sentences', content_rowid='id' )"
+CREATESENTENCES = "CREATE TABLE sentences (id INTEGER PRIMARY KEY, title TEXT, idx TEXT, sentence TEXT)"
+DROPINDX        = 'DROP TABLE IF EXISTS indx;'
+DROPSENTENCES   = 'DROP TABLE IF EXISTS sentences;'
+DROPTRIGGER     = 'DROP TRIGGER IF EXISTS sentences_insert;'
+INSERT          = "INSERT INTO sentences (title, idx, sentence) VALUES (?, ?, ?)"
+TRIGGERINSERT   = "CREATE TRIGGER sentences_insert AFTER INSERT ON sentences BEGIN INSERT INTO indx(rowid, title, idx, sentence) VALUES (new.id, new.title, new.idx, new.sentence); END"
 
 # require
-import os
-import re
+#import os
+#import re
 from sqlite3 import connect
-import tempfile
-import sys
+#import tempfile
+#import sys
 from rdr import ETC, configuration
-from sys import argv, exit
+from sys import stderr, argv, exit
+from sqlite_vec import load
+from pandas     import read_csv
 
 # get input
 if len( argv ) != 2 : exit( 'Usage: ' + argv[ 0 ] + " <carrel>" )
 carrel = argv[ 1 ]
 
 # initialize
-database    = configuration( LIBRARY )/carrel/ETC/DATABASE
-transaction = tempfile.NamedTemporaryFile( delete=False ).name
+database = configuration( LIBRARY )/carrel/ETC/DATABASE
+cache    = configuration( LIBRARY )/carrel/CACHE
 
-# connect to database
-connection                 = connect( database )
-connection.isolation_level = None
-cursor                     = connection.cursor()
+# create database
+stderr.write( "Creating full text tables\n" )
+connection = connect( database )
+connection.enable_load_extension( True )
+load( connection )
+connection.execute( DROPSENTENCES )
+connection.execute( DROPTRIGGER )
+connection.execute( DROPINDX )
+connection.execute( CREATESENTENCES )
+connection.execute( CREATEINDX )
+connection.execute( TRIGGERINSERT )
 	
 # create full text table
-sys.stderr.write( 'Indexing; the carrel must be set up for full text searching.\n' )
-sys.stderr.write( 'Step #1 of 4: Creating table to contain full text...\n' )
-connection.execute( DROPFULLTEXT )
-connection.execute( CREATEFULLTEXT )
+stderr.write( 'Indexing; the carrel must be set up for full text searching.\n' )
+stderr.write( 'Step #1 of 4: Creating table to contain full text...\n' )
 
-# read full text
-sys.stderr.write( 'Step #2 of 4: Reading full text; please be patient...\n' )
-with open( transaction, 'w', encoding='utf-8'  ) as handle : handle.write( 'BEGIN TRANSACTION;\n' )
-for record in connection.execute( SELECTALL ) :
+# fill database
+stderr.write( "Filling database with sentences\n" )
+count = 0
+for index, file in enumerate( cache.glob( PATTERN ) ):
 
-	# parse
-	title    = record[ 0 ] 
-	idx      = record[ 1 ]
-	sentence = record[ 2 ]
+	# increment and debug
+	title =  file.stem
+	count += 1
+	stderr.write( '  %s (%s)\n' % ( file, str( count ) ) )
+
+	# re-initialize and normalize
+	records   = read_csv( file )
+	sentences = list( records[ 'sentence' ] )
+	sentences = [ str( sentence ) for sentence in sentences ]
+	indexes   = list( records[ 'idx' ] )
+	indexes   = [ str( index ) for index in indexes ]
+
+	# do the work
+	for sentence, index in zip( sentences, indexes ) : 
 	
-	# normalize
-	title    = title.replace( "'", "''" )
-	sentence = sentence.replace( '\r', '\n' )
-	sentence = sentence.replace( '\n', ' ' )
-	sentence = sentence.replace( "'",  "''")
-	sentence = re.sub( ' +' , ' ', sentence )
+		stderr.write( '     title: ' + title + '\n' )
+		stderr.write( '     index: ' + index + '\n' )
+		stderr.write( '  sentence: ' + sentence + '\n' )
+		stderr.write( '\n' )
+		
+		connection.execute( INSERT, [ title, index, sentence ] )
 
-	# sql
-	sql = TEMPLATE
-	sql = sql.replace( '##TITLE##', title )
-	sql = sql.replace( '##IDX##', str( idx ) )
-	sql = sql.replace( '##SENTENCE##', sentence )
-
-	# debug
-	sys.stderr.write( '     title: ' + title + '\n' )
-	sys.stderr.write( '       idx: ' + str( idx ) + '\n' )
-	sys.stderr.write( '  sentence: ' + sentence + '\n' )
-	sys.stderr.write( '\n' )
-
-	# update
-	with open( transaction, 'a', encoding='utf-8' ) as handle : handle.write( sql )
-
-# close the transaction
-with open( transaction, 'a', encoding='utf-8'  ) as handle : handle.write( 'END TRANSACTION;\n' )
-
-# write full text
-sys.stderr.write( 'Step #3 of 4: Writing full text to database...\n' )
-with open( transaction, encoding='utf-8'  ) as handle :
-
-	# repeat forever, almost
-	while True :
-		sql = handle.readline()
-		if not sql : break
-		connection.execute( sql )
-
-# index; do the actual work
-sys.stderr.write( 'Step #4 of 4: Indexing; please be patient...\n' )
-connection.execute( DROPINDX )
-connection.execute( CREATEINDX )
-connection.execute( INDEX )
-
-# clean up, and done
-os.remove( transaction )
-sys.stderr.write( 'Done. You can now do something like "rrag match %s"\n' % carrel )
+# commit, close, and done
+connection.commit()
+connection.close()
+stderr.write( "Full text index created.\n" )
 exit()
 
-	
