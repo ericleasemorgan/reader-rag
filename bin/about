@@ -27,7 +27,7 @@ rrag match $CARREL -q "$QUERY" > /dev/null
 
 # do the work
 clear; echo
-echo "The most signficiant keywords in the carrel named '$CARREL' are $KEYWORDS, and the carrel may characterized as being about the following:" | fmt
+echo -e "#$CARREL\nThe most signficiant keywords in the carrel named '$CARREL' are $KEYWORDS, and the carrel may be characterized as being about the following:" | fmt
 echo
 rrag summarize | fmt
 echo
