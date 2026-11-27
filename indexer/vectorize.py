@@ -6,15 +6,18 @@
 # Eric Lease Morgan <emorgan@nd.edu>
 # (c) University of Notre Dame; distributed under a GNU Public License
 
-# configure
-MODEL      = 'locusai/multi-qa-minilm-l6-cos-v1'
-INSERT     = "INSERT INTO embeddings (sentence_id, embedding) VALUES (?, ?)"
-LIBRARY    = 'localLibrary'
-DATABASE   = 'sentences.db'
+# November 26, 2026 - first documentation? certainly not, but apparently so
 
+
+# configure
+MODEL            = 'locusai/multi-qa-minilm-l6-cos-v1'
+INSERT           = "INSERT INTO embeddings (sentence_id, embedding) VALUES (?, ?)"
+LIBRARY          = 'localLibrary'
+DATABASE         = 'sentences.db'
 CREATEEMBEDDINGS = "CREATE VIRTUAL TABLE embeddings USING vec0( sentence_id INTEGER PRIMARY KEY, embedding float[384])"
 DROPEMBEDDINGS   = "DROP TABLE IF EXISTS embeddings"
 SELECTALL        = 'SELECT id, sentence FROM sentences ORDER BY id'
+BATCH_SIZE       = 128
 
 # require
 from ollama     import embed, ResponseError
@@ -25,9 +28,6 @@ from struct     import pack
 from sys        import stderr, argv, exit
 from tqdm       import tqdm
 from typing     import List
-
-# tuning
-BATCH_SIZE = 128
 
 # get input
 if len( argv ) != 2 : exit( 'Usage: ' + argv[ 0 ] + " <carrel>" )
@@ -56,9 +56,7 @@ stderr.write( f"Loaded {len(records)} sentences\n" )
 # process in batches
 stderr.write( "Generating embeddings\n" )
 connection.execute( "BEGIN" )
-
-for i in tqdm( range( 0, len( records ), BATCH_SIZE ),
-               desc="Vectorizing", unit="batch" ):
+for i in tqdm( range( 0, len( records ), BATCH_SIZE ), desc="Vectorizing", unit="batch" ) :
 
 	# get the current batch
 	batch   = records[ i : i + BATCH_SIZE ]

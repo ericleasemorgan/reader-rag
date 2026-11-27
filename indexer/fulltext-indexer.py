@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 
-# index.py - make an SQL database full text searchable
+# fulltext-indexer.py - create a full text index of a given carrel
+
+# Eric Lease Morgan <eric_morgan@infomotions.com>
+# (c) Infomotions, LLC; distributed under a GNU Public License
+
+# November 26, 2026 - not first documentation and surely written a while ago
+
 
 # configure
 LIBRARY  = 'localLibrary'
@@ -18,12 +24,12 @@ INSERT          = "INSERT INTO sentences (title, idx, sentence) VALUES (?, ?, ?)
 TRIGGERINSERT   = "CREATE TRIGGER sentences_insert AFTER INSERT ON sentences BEGIN INSERT INTO indx(rowid, title, idx, sentence) VALUES (new.id, new.title, new.idx, new.sentence); END"
 
 # require
-from sqlite3 import connect
-from rdr     import ETC, configuration
-from sys     import stderr, argv, exit
+from pandas     import read_csv
+from rdr        import ETC, configuration
 from sqlite_vec import load
-from pandas  import read_csv
-from tqdm    import tqdm
+from sqlite3    import connect
+from sys        import stderr, argv, exit
+from tqdm       import tqdm
 
 # get input
 if len( argv ) != 2 : exit( 'Usage: ' + argv[ 0 ] + " <carrel>" )
@@ -67,8 +73,7 @@ for file in tqdm( files, desc="Indexing", unit="file" ):
 	indexes   = [ str( index ) for index in indexes ]
 
 	# do the work
-	for sentence, index in zip( sentences, indexes ) :
-		connection.execute( INSERT, [ title, index, sentence ] )
+	for sentence, index in zip( sentences, indexes ) : connection.execute( INSERT, [ title, index, sentence ] )
 
 # commit, close, and done
 connection.commit()

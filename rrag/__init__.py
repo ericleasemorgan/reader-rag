@@ -298,66 +298,262 @@ class Hybridizer :
 			return( items )
 
 
-class Searcher : 
-	
-	def __init__( self ) : return( None )
-		
-	def search( self, carrel, query ) :
-			
-		# configure
-		THRESHOLD = 1.0
-		MAXIMUM   = 512
-		COLUMNS   = [ 'titles', 'idx', 'sentences', 'scores' ]
-		SELECT    = "SELECT s.title, s.idx, s.sentence, e.distance FROM (SELECT  sentence_id, distance FROM embeddings WHERE embedding MATCH ? ORDER BY distance LIMIT ?) e JOIN    sentences s ON s.id = e.sentence_id ORDER BY e.distance"
-			
-		# update
-		self.query = query
-		
-		# initialize
-		database = connect( library/carrel/ETC/DATABASE, check_same_thread=False )
-		database.enable_load_extension( True )
-		vecload( database )
-				
-		# vectorize query and search; get a set of matching records
-		query   = embed( model=EMBEDDER, input=query ).model_dump( mode='json' )[ 'embeddings' ][ 0 ]
-		records = database.execute( SELECT, [ self.serialize( query ), MAXIMUM ] ).fetchall()
-	
-		# process each result; create a list of items
-		items = []
-		for record in records :
-		
-			# parse
-			title    = record[ 0 ]
-			idx      = record[ 1 ]
-			sentence = record[ 2 ]
-			score    = record[ 3 ]
-			
-			print( score )
-								
-			# short-circuit
-			#if score > THRESHOLD : break
-			
-			# update
-			items.append( [ title, idx, sentence, score ] )
-		
-		# create a dataframe of the sentences, sort by title
-		items = DataFrame( items, columns=COLUMNS )
-		items = items.sort_values( [ 'titles', 'idx' ] )
+class Searcher :
 
-		# cache and done
-		Cacher().cache( 'results', items )
-		Cacher().cache( 'carrel', carrel )
-		Cacher().cache( 'query', self.query )
-		Cacher().cache( 'type', 'semantic' )
-		return( items )
+    def __init__( self ) :
+        self.query = None
+        return( None )
+
+    def search( self, carrel, query ) :
+
+        # configure
+        CANDIDATE_POOL = 200      # larger pool from vector DB for reranking
+        TOP_K          = 64       # final results after reranking and filtering
+        MIN_THRESHOLD  = 0.15     # absolute minimum cosine similarity (0–1 scale)
+        CONTEXT_WINDOW = 1        # number of adjacent sentences to include on each side
+        COLUMNS        = [ 'titles', 'idx', 'sentences', 'scores' ]
+
+        # SQL: retrieve a candidate pool from vector search
+        SELECT = (
+            "SELECT s.id, s.title, s.idx, s.sentence, e.distance "
+            "FROM (SELECT sentence_id, distance FROM embeddings "
+            "      WHERE embedding MATCH ? AND k = ? "
+            "      ORDER BY distance) e "
+            "JOIN sentences s ON s.id = e.sentence_id"
+        )
+
+        # SQL: retrieve a specific sentence by title+idx (for context expansion)
+        SELECT_CONTEXT = (
+            "SELECT id, sentence FROM sentences "
+            "WHERE title = ? AND idx = ?"
+        )
+
+        # update
+        self.query = query
+
+        # initialize database
+        database = connect( library/carrel/ETC/DATABASE, check_same_thread=False )
+        database.enable_load_extension( True )
+        vecload( database )
+
+        # --- 1. QUERY EXPANSION ---
+        # Generate paraphrases using the LLM, then embed all variations
+        expanded_queries = self._expand_query( query )
+
+        # Embed the original query and all paraphrases
+        all_queries = [ query ] + expanded_queries
+        embeddings_list = []
+        for q in all_queries:
+            vec = embed( model=EMBEDDER, input=q ).model_dump( mode='json' )[ 'embeddings' ][ 0 ]
+            embeddings_list.append( vec )
+
+        # Average the embeddings to create a single enriched query vector
+        query_vec = np.mean( embeddings_list, axis=0 ).tolist()
+
+        # --- 2. VECTOR SEARCH (candidate pool) ---
+        records = database.execute(
+            SELECT, [ self.serialize( query_vec ), CANDIDATE_POOL ]
+        ).fetchall()
+
+        if not records:
+            items = DataFrame( [], columns=COLUMNS )
+            Cacher().cache( 'results', items )
+            Cacher().cache( 'carrel', carrel )
+            Cacher().cache( 'query', self.query )
+            Cacher().cache( 'type', 'semantic' )
+            return( items )
+
+        # --- 3. RERANK IN PYTHON (exact cosine similarity) ---
+        # sqlite-vec distance is an approximation; recompute exact similarity
+        query_array = np.array( query_vec ).reshape( 1, -1 )
+
+        items = []
+        for record in records :
+            sid      = record[ 0 ]
+            title    = record[ 1 ]
+            idx      = record[ 2 ]
+            sentence = record[ 3 ]
+
+            # Re-embed the retrieved sentence for exact comparison
+            # (Alternatively, pre-store embeddings — but re-embedding is exact)
+            sentence_vec = embed(
+                model=EMBEDDER, input=sentence
+            ).model_dump( mode='json' )[ 'embeddings' ][ 0 ]
+            sentence_array = np.array( sentence_vec ).reshape( 1, -1 )
+
+            # Cosine similarity (1.0 = identical, 0.0 = unrelated)
+            similarity = cosine_similarity( query_array, sentence_array )[ 0 ][ 0 ]
+
+            items.append( [ title, idx, sentence, similarity ] )
+
+        # --- 4. ADAPTIVE SCORE CUTOFF ---
+        # Sort by similarity descending
+        items.sort( key=lambda x: x[ 3 ], reverse=True )
+
+        # Find the natural drop-off point in the score distribution
+        cutoff_idx = self._find_score_dropoff( items )
+
+        # Apply both the adaptive cutoff and the absolute minimum threshold
+        filtered = []
+        for i, item in enumerate( items ):
+            if i >= cutoff_idx and item[ 3 ] < MIN_THRESHOLD:
+                break
+            if item[ 3 ] < MIN_THRESHOLD:
+                break
+            filtered.append( item )
+
+        # --- 5. DEDUPLICATE near-identical sentences ---
+        filtered = self._deduplicate( filtered )
+
+        # --- 6. CONTEXT EXPANSION ---
+        # Include adjacent sentences to improve passage-level recall
+        if CONTEXT_WINDOW > 0:
+            filtered = self._expand_context(
+                filtered, database, SELECT_CONTEXT, CONTEXT_WINDOW
+            )
+
+        # --- 7. FINAL TRIM AND SORT ---
+        filtered = filtered[ :TOP_K ]
+        items = DataFrame( filtered, columns=COLUMNS )
+        items = items.sort_values( [ 'titles', 'idx' ] )
+
+        # cache and done
+        Cacher().cache( 'results', items )
+        Cacher().cache( 'carrel', carrel )
+        Cacher().cache( 'query', self.query )
+        Cacher().cache( 'type', 'semantic' )
+        return( items )
 
 
-	def serialize( self, vector: List[float]) -> bytes : 
-		'''Serialize a list of floats into a compact "raw bytes" format'''
-		from struct                   import pack
-		return pack( "%sf" % len( vector ), *vector )
-	
-		
+    def serialize( self, vector: List[float] ) -> bytes :
+        '''Serialize a list of floats into a compact "raw bytes" format'''
+        from struct import pack
+        return pack( "%sf" % len( vector ), *vector )
+
+
+    def _expand_query( self, query: str, n_paraphrases: int = 2 ) -> List[str]:
+        '''Generate paraphrases of the query using the LLM to broaden semantic coverage.'''
+        prompt = (
+            f'Rephrase the following question in {n_paraphrases} different ways. '
+            f'Each rephrasing should use different vocabulary but preserve the same meaning. '
+            f'Output one rephrasing per line, nothing else.\n\nQuestion: {query}'
+        )
+        try:
+            response = generate( model=LLM, prompt=prompt )
+            lines = response[ 'response' ].strip().split( '\n' )
+            # Clean up: remove numbering, extra whitespace, empty lines
+            paraphrases = [
+                line.strip().lstrip( '0123456789.-) ' )
+                for line in lines
+                if line.strip()
+            ]
+            return paraphrases[ :n_paraphrases ]
+        except Exception:
+            # If LLM fails, fall back to no expansion
+            return []
+
+
+    def _find_score_dropoff( self, items: List[list] ) -> int:
+        '''
+        Find the index where similarity scores naturally drop off.
+        Uses the largest gap between consecutive scores as the cutoff.
+        '''
+        if len( items ) < 3:
+            return len( items )
+
+        scores = [ item[ 3 ] for item in items ]
+        max_gap = 0
+        cutoff_idx = len( items )
+
+        for i in range( 1, len( scores ) ):
+            gap = scores[ i - 1 ] - scores[ i ]
+            if gap > max_gap:
+                max_gap = gap
+                cutoff_idx = i
+
+        return cutoff_idx
+
+
+    def _deduplicate(
+        self, items: List[list], similarity_threshold: float = 0.85
+    ) -> List[list]:
+        '''Remove near-duplicate sentences using word-set overlap (Jaccard similarity).'''
+        seen = []
+        result = []
+        for item in items:
+            sentence = item[ 2 ].lower()
+            is_dup = False
+            for prev in seen:
+                words_a = set( sentence.split() )
+                words_b = set( prev.split() )
+                if words_a and words_b:
+                    overlap = len( words_a & words_b ) / len( words_a | words_b )
+                    if overlap > similarity_threshold:
+                        is_dup = True
+                        break
+            if not is_dup:
+                seen.append( sentence )
+                result.append( item )
+        return result
+
+
+    def _expand_context(
+        self,
+        items: List[list],
+        database,
+        select_context_sql: str,
+        window: int
+    ) -> List[list]:
+        '''
+        For each matched sentence, include adjacent sentences (by idx)
+        to improve passage-level recall.
+        '''
+        expanded = []
+        seen_ids = set()
+
+        for item in items:
+            title    = item[ 0 ]
+            idx      = item[ 1 ]
+            sentence = item[ 2 ]
+            score    = item[ 3 ]
+
+            # Try to parse idx as integer for arithmetic
+            try:
+                idx_int = int( idx )
+            except ( ValueError, TypeError ):
+                # If idx is not numeric, skip context expansion for this item
+                expanded.append( item )
+                continue
+
+            # Add surrounding sentences
+            for offset in range( -window, window + 1 ):
+                adj_idx = idx_int + offset
+                key = ( title, adj_idx )
+
+                if key in seen_ids:
+                    continue
+
+                seen_ids.add( key )
+
+                if offset == 0:
+                    # Original matched sentence with its score
+                    expanded.append( [ title, str( adj_idx ), sentence, score ] )
+                else:
+                    # Fetch adjacent sentence from database
+                    row = database.execute(
+                        select_context_sql, [ title, str( adj_idx ) ]
+                    ).fetchone()
+                    if row:
+                        adj_sentence = row[ 1 ]
+                        # Adjacent sentences get a decayed score
+                        decayed_score = score * ( 1.0 / ( 1.0 + abs( offset ) ) )
+                        expanded.append(
+                            [ title, str( adj_idx ), adj_sentence, decayed_score ]
+                        )
+
+        return expanded
+
+
 class Citations :
 
 	def __init__( self ) : return( None )
