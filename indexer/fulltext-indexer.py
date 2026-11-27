@@ -9,7 +9,6 @@ CACHE    = 'sentences'
 PATTERN  = '*.snt'
 
 # SQL statements
-CREATEINDX      = 'CREATE VIRTUAL TABLE indx USING FTS5( title, idx, sentence );'
 CREATEINDX      = "CREATE VIRTUAL TABLE indx USING FTS5( title, idx, sentence, content='sentences', content_rowid='id' )"
 CREATESENTENCES = "CREATE TABLE sentences (id INTEGER PRIMARY KEY, title TEXT, idx TEXT, sentence TEXT)"
 DROPINDX        = 'DROP TABLE IF EXISTS indx;'
@@ -19,15 +18,12 @@ INSERT          = "INSERT INTO sentences (title, idx, sentence) VALUES (?, ?, ?)
 TRIGGERINSERT   = "CREATE TRIGGER sentences_insert AFTER INSERT ON sentences BEGIN INSERT INTO indx(rowid, title, idx, sentence) VALUES (new.id, new.title, new.idx, new.sentence); END"
 
 # require
-#import os
-#import re
 from sqlite3 import connect
-#import tempfile
-#import sys
-from rdr import ETC, configuration
-from sys import stderr, argv, exit
+from rdr     import ETC, configuration
+from sys     import stderr, argv, exit
 from sqlite_vec import load
-from pandas     import read_csv
+from pandas  import read_csv
+from tqdm    import tqdm
 
 # get input
 if len( argv ) != 2 : exit( 'Usage: ' + argv[ 0 ] + " <carrel>" )
@@ -48,20 +44,20 @@ connection.execute( DROPINDX )
 connection.execute( CREATESENTENCES )
 connection.execute( CREATEINDX )
 connection.execute( TRIGGERINSERT )
-	
+
 # create full text table
 stderr.write( 'Indexing; the carrel must be set up for full text searching.\n' )
 stderr.write( 'Step #1 of 4: Creating table to contain full text...\n' )
 
-# fill database
+# get the list of files so tqdm knows the total
+files = sorted( cache.glob( PATTERN ) )
 stderr.write( "Filling database with sentences\n" )
-count = 0
-for index, file in enumerate( cache.glob( PATTERN ) ):
 
-	# increment and debug
-	title =  file.stem
-	count += 1
-	stderr.write( '  %s (%s)\n' % ( file, str( count ) ) )
+# fill database with a progress bar
+for file in tqdm( files, desc="Indexing", unit="file" ):
+
+	# initialize
+	title = file.stem
 
 	# re-initialize and normalize
 	records   = read_csv( file )
@@ -71,18 +67,11 @@ for index, file in enumerate( cache.glob( PATTERN ) ):
 	indexes   = [ str( index ) for index in indexes ]
 
 	# do the work
-	for sentence, index in zip( sentences, indexes ) : 
-	
-		stderr.write( '     title: ' + title + '\n' )
-		stderr.write( '     index: ' + index + '\n' )
-		stderr.write( '  sentence: ' + sentence + '\n' )
-		stderr.write( '\n' )
-		
+	for sentence, index in zip( sentences, indexes ) :
 		connection.execute( INSERT, [ title, index, sentence ] )
 
 # commit, close, and done
 connection.commit()
 connection.close()
-stderr.write( "Full text index created.\n" )
+stderr.write( "\nFull text index created.\n" )
 exit()
-

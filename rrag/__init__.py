@@ -331,9 +331,11 @@ class Searcher :
 			idx      = record[ 1 ]
 			sentence = record[ 2 ]
 			score    = record[ 3 ]
-									
+			
+			print( score )
+								
 			# short-circuit
-			if score > THRESHOLD : break
+			#if score > THRESHOLD : break
 			
 			# update
 			items.append( [ title, idx, sentence, score ] )
