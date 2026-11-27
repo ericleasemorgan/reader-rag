@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# search - given a carrel and a few query words, search the carrel
+
+# Eric Lease Morgan <eric_morgan@infomotions.com>
+# (c) Infomotions, LLC; distributed under a GNU Public License
+
+# November 21, 2026 - first cut
+# November 26, 2026 - tweaking with new search function
+
+# search, reformat, and display
+rrag reformat | fmt | less
+
+# done
+exit
