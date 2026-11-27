@@ -9,18 +9,19 @@
 # November 26, 2026 - tweaking with new search function
 
 
-if [[ -z $1 || -z $2 ]]; then
-	echo "Usage: $0 <carrel> <query>" >&2
+if [[ -z $1 || -z $2 || -z $3 ]]; then
+	echo "Usage: $0 <type> <carrel> <query>" >&2
 	exit
 fi
-CARREL=$1
-QUERY=$2
+TYPE=$1
+CARREL=$2
+QUERY=$3
 
 # parse out the first word for display
 WORD=$(echo "$QUERY" | cut -d' ' -f1)
 
 # search, reformat, and display
-rrag hybrid $CARREL -q "$QUERY" >/dev/null && rrag reformat | fmt | less -i --pattern="$WORD"
+rrag $TYPE $CARREL -q "$QUERY" >/dev/null && rrag reformat | fmt | less -i --pattern="$WORD"
 
 # done
 exit

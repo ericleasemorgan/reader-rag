@@ -23,6 +23,9 @@ DROPTRIGGER     = 'DROP TRIGGER IF EXISTS sentences_insert;'
 INSERT          = "INSERT INTO sentences (title, idx, sentence) VALUES (?, ?, ?)"
 TRIGGERINSERT   = "CREATE TRIGGER sentences_insert AFTER INSERT ON sentences BEGIN INSERT INTO indx(rowid, title, idx, sentence) VALUES (new.id, new.title, new.idx, new.sentence); END"
 
+CREATEEMBEDDINGS = "CREATE VIRTUAL TABLE embeddings USING vec0( sentence_id INTEGER PRIMARY KEY, embedding float[384])"
+DROPEMBEDDINGS   = "DROP TABLE IF EXISTS embeddings"
+
 # require
 from pandas     import read_csv
 from rdr        import ETC, configuration
@@ -51,6 +54,9 @@ connection.execute( CREATESENTENCES )
 connection.execute( CREATEINDX )
 connection.execute( TRIGGERINSERT )
 
+connection.execute( DROPEMBEDDINGS )
+connection.execute( CREATEEMBEDDINGS )
+ 
 # create full text table
 stderr.write( 'Indexing; the carrel must be set up for full text searching.\n' )
 stderr.write( 'Step #1 of 4: Creating table to contain full text...\n' )

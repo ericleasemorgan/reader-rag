@@ -156,7 +156,7 @@ class Matcher :
 	def match( self, carrel, query ) :
 			
 		# configure
-		LIMIT    = 512
+		LIMIT    = 128
 		TEMPLATE = "SELECT s.title AS titles, s.idx, s.sentence AS sentences, rank AS 'scores' FROM indx JOIN sentences s ON s.id = indx.rowid WHERE indx MATCH '##QUERY##' ORDER BY rank LIMIT ##LIMIT##"
 		
 		# initialize
